@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 파일 분석기 임베딩</title>
+    <style>
+        /* 임베딩 컨테이너 스타일 */
+        .embed-container {
+            width: 100%;
+            max-width: 100%;
+            border: 1px solid #e5e7eb;
+            border-radius: 12px;
+            background: #f9fafb;
+            padding: 16px;
+            margin: 20px 0;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        }
+
+        .embed-header {
+            text-align: center;
+            margin-bottom: 16px;
+            padding-bottom: 12px;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .embed-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #374151;
+            margin-bottom: 4px;
+        }
+
+        .embed-description {
+            font-size: 0.9em;
+            color: #6b7280;
+        }
+
+        .embed-frame {
+            width: 100%;
+            min-height: 600px;
+            border: none;
+            border-radius: 8px;
+            background: white;
+        }
+
+        .embed-footer {
+            text-align: center;
+            margin-top: 12px;
+            font-size: 0.8em;
+            color: #9ca3af;
+        }
+
+        .embed-footer a {
+            color: #3b82f6;
+            text-decoration: none;
+        }
+
+        .embed-footer a:hover {
+            text-decoration: underline;
+        }
+
+        /* 반응형 */
+        @media (max-width: 768px) {
+            .embed-container {
+                margin: 16px 0;
+                padding: 12px;
+            }
+            
+            .embed-frame {
+                min-height: 500px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+<!-- 블로그 임베딩 코드 (복사해서 사용하세요) -->
+
+<div class="embed-container">
+    <div class="embed-header">
+        <div class="embed-title">🤖 AI 파일 분석기</div>
+        <div class="embed-description">Gemini AI로 YouTube 데이터를 똑똑하게 분석해보세요</div>
+    </div>
+    
+    <iframe 
+        src="https://api.tipmaster.co.kr/youtube/analyzer" 
+        class="embed-frame"
+        title="AI 파일 분석기"
+        loading="lazy">
+    </iframe>
+    
+    <div class="embed-footer">
+        Powered by <a href="https://api.tipmaster.co.kr/youtube/analyzer" target="_blank">TipMaster AI Tools</a>
+    </div>
+</div>

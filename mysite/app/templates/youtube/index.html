@@ -1,0 +1,480 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>YouTube 분석 도구</title>
+    <meta name="description" content="고급 필터와 통계 분석 기능을 제공하는 강력한 YouTube 동영상 검색 도구입니다.">
+    <meta name="keywords" content="YouTube, 검색, 동영상, 필터, 통계, 분석, 키워드, 채널, 유튜버">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/youtube_styles.css') }}">
+
+    <style>
+        #filter-modal .slider::-webkit-slider-thumb {
+            /* 브라우저 기본 슬라이더 모양을 강제로 되돌립니다 */
+            -webkit-appearance: slider-thumb !important;
+            appearance: slider-thumb !important;
+        }
+    </style>
+    
+    <!-- SheetJS 라이브러리 추가 (Excel 내보내기용) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+    <div class="header">
+        <div class="header-content">
+            <a href="#" class="logo" id="home-button">🎥 YouTube 분석 도구</a>
+
+            <div class="search-container">
+                <span class="search-icon">⌨️</span> <input type="text" class="search-input" id="search-input" placeholder="검색어를 입력하세요... (예: 요리, 운동, 리뷰)">
+                <button class="search-btn" id="search-button"><span>🔍</span></button>
+            </div>
+
+            <div class="toolbar">
+                <button class="toolbar-btn filter-btn" id="filter-btn">
+                    ⚙️ 필터
+                </button>
+
+                <div class="dropdown">
+                    <button class="toolbar-btn dropdown-btn" id="save-dropdown-btn">
+                        💾 저장 <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="dropdown-menu" id="save-dropdown">
+                        <a href="#" class="dropdown-item" id="export-excel-btn">📊 Excel 저장</a>
+                        <a href="#" class="dropdown-item" id="export-json-btn">📄 Json 저장</a>
+                    </div>
+                </div>
+
+                <div class="dropdown">
+                    <button class="toolbar-btn dropdown-btn" id="analyze-dropdown-btn">
+                        📈 분석 <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="dropdown-menu" id="analyze-dropdown">
+                        <a href="#" class="dropdown-item disabled" id="ai-analyze-btn">🤖 AI 분석</a>
+                        <a href="#" class="dropdown-item" id="analyze-basic-stats-btn">📊 기본 통계</a>
+                        <a href="#" class="dropdown-item" id="analyze-trend-btn">📈 트렌드 분석</a>
+                        <a href="#" class="dropdown-item" id="analyze-keyword-btn">🔤 키워드 분석</a>
+                        <a href="#" class="dropdown-item" id="analyze-channel-comparison-btn">📺 채널 비교</a>
+                        <a href="#" class="dropdown-item" id="analyze-prediction-btn">🔮 기본 예측</a>
+                    </div>
+                </div>
+
+                <div class="dropdown">
+                    <button class="toolbar-btn dropdown-btn" id="tools-dropdown-btn">
+                        🛠️ 도구 <span class="dropdown-arrow">▼</span>
+                    </button>
+                    <div class="dropdown-menu" id="tools-dropdown-menu">
+                        <a href="#" class="dropdown-item" id="open-selected-btn">🎬 선택된 비디오 열기</a>
+                        <a href="#" class="dropdown-item" id="show-video-details-btn">ℹ️ 상세 정보</a>
+                        <a href="#" class="dropdown-item" id="clear-results-btn">🗑️ 결과 지우기</a>
+                        <a href="#" class="dropdown-item" id="refresh-home-btn">🔄 홈 새로고침</a>
+                        <a href="#" class="dropdown-item" id="api-key-settings-btn">🔑 API 키 설정</a>
+                    </div>
+                </div>
+
+                <button class="toolbar-btn primary-mode-btn" id="api-mode-toggle-btn">
+                    <span id="current-mode" class="mode-badge"></span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 알림 메시지 컨테이너 (상단 고정) -->
+    <div id="notification-container"></div>
+
+    <div class="main-content">
+        <div id="youtube-home" class="content-section active">
+            <div class="home-header">
+                <h2>🔥 오늘의 인기 동영상</h2>
+                <!--
+                <button class="btn-primary" id="refresh-home-button">
+                    🔄 새로고침
+                </button>
+                -->
+            </div>
+
+            <div class="video-grid" id="home-video-grid">
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">15:30</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">트렌딩 음악 MV 모음</div>
+                        <div class="video-channel">음악채널</div>
+                        <div class="video-meta">
+                            <span>2.1M 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">12:45</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">🎮 게임 신작 리뷰</div>
+                        <div class="video-channel">게임리뷰어</div>
+                        <div class="video-meta">
+                            <span>856K 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">5:23</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">🍳 5분 요리 레시피</div>
+                        <div class="video-channel">쿠킹마스터</div>
+                        <div class="video-meta">
+                            <span>634K 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">20:15</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">🏃 홍대레이싱 루틴</div>
+                        <div class="video-channel">헬스트레이너</div>
+                        <div class="video-meta">
+                            <span>423K 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">18:30</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">💪 백스트레이너</div>
+                        <div class="video-channel">맥스트레이너</div>
+                        <div class="video-meta">
+                            <span>1.2M 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">25:40</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">✈️ 내게 여행 브이로그</div>
+                        <div class="video-channel">여행유튜버</div>
+                        <div class="video-meta">
+                            <span>987K 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">8:50</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">🎯 카이저 10갤럭</div>
+                        <div class="video-channel">카이저</div>
+                        <div class="video-meta">
+                            <span>2.3M 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="video-card">
+                    <div class="thumbnail-container">
+                        <img src="https://placehold.co/280x157?text=Waiting+for+API+connection" alt="썸네일" class="thumbnail">
+                        <span class="video-duration">35:00</span>
+                    </div>
+                    <div class="video-info">
+                        <div class="video-title">🐍 파이썬 기초 강의</div>
+                        <div class="video-channel">파이썬과외</div>
+                        <div class="video-meta">
+                            <span>756K 조회수 • 오늘 전</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="search-results" class="content-section">
+            <h2 id="results-count">검색 결과: 0개</h2>
+            <div class="table-container">
+                <table class="results-table">
+                    <thead>
+                        <tr>
+                            <th><input type="checkbox" id="select-all-checkbox"></th>
+                            <th title="썸네일">썸네일</th>
+                            <th class="sortable" data-sort-by="title" title="제목">제목</th>
+                            <th class="sortable" data-sort-by="date" title="업로드일">업로드일</th>
+                            <th class="sortable" data-sort-by="views" title="조회수">조회수</th>
+                            <th class="sortable" data-sort-by="videoAccelerationRate" title="떡상률=확산률/업로드경과일">떡상률</th>
+                            <th class="sortable" data-sort-by="likes" title="좋아요">좋아요</th>
+                            <th class="sortable" data-sort-by="comments" title="댓글">댓글</th>
+                            <th class="sortable" data-sort-by="duration" title="영상길이">길이</th>
+                            <th class="sortable" data-sort-by="channel" title="채널">채널</th>
+                            <th class="sortable" data-sort-by="channelDate" title="채널개설일">개설일</th>
+                            <th class="sortable" data-sort-by="subscribers" title="구독자수">구독자수</th>
+                            <th class="sortable" data-sort-by="channelAccelerationRate" title="확산률=조회수/구독자수">확산률</th>
+                            </tr>
+                    </thead>
+                    <tbody id="results-table-body">
+                    </tbody>
+                </table>
+            </div>
+            <div class="pagination-controls">
+                <button id="prev-page-btn" disabled>이전</button>
+                <button id="next-page-btn">다음</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="api-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">×</span>
+            <h3>🔑 YouTube Data API 키 설정</h3>
+            <p>YouTube Data API를 사용하여 더 많은 검색 결과를 얻고 고급 기능을 활용할 수 있습니다.</p>
+            
+            <div class="api-key-warning" style="background: linear-gradient(135deg, #fff3cd 0%, #ffeaa7 100%); border-left: 5px solid #f39c12; padding: 15px; margin-bottom: 15px; border-radius: 8px;">
+                <div style="display: flex; align-items: center; margin-bottom: 10px;">
+                    <span style="font-size: 1.2em; margin-right: 8px;">🛡️</span>
+                    <strong style="color: #e67e22;">개인정보 보호 및 보안</strong>
+                </div>
+                <ul style="margin: 8px 0 8px 20px; padding: 0; font-size: 0.9rem; color: #856404;">
+                    <li><strong>암호화 저장:</strong> API 키는 암호화되어 안전하게 저장됩니다</li>
+                    <li><strong>세션 모드:</strong> 브라우저를 닫으면 자동으로 삭제됩니다</li>
+                    <li><strong>로컬 처리:</strong> 서버에 API 키가 저장되지 않습니다</li>
+                    <li><strong>개인 사용:</strong> 본인의 Google Cloud Console API 키만 사용하세요</li>
+                </ul>
+                <div style="margin-top: 10px; padding: 8px; background: rgba(255,255,255,0.7); border-radius: 4px; font-size: 0.8rem;">
+                    ⚠️ <strong>주의:</strong> 공용 컴퓨터에서는 세션 스토리지 모드를 사용하고, 사용 후 반드시 API 키를 삭제하세요.
+                </div>
+            </div>
+            
+            <input type="text" id="api-key-input" placeholder="여기에 API 키를 입력하세요... (AIza로 시작)" class="modal-input" autocomplete="off" spellcheck="false">
+            
+            <div class="modal-actions">
+    <button class="btn-secondary" id="api-delete-btn">🗑️ API 키 삭제</button>
+    <button class="btn-primary" id="api-save-btn">💾 저장 및 적용</button>
+</div>
+            
+            <div class="modal-info" style="margin-top: 15px; padding: 12px; background: #f8f9fa; border-radius: 6px;">
+                <h4 style="margin: 0 0 8px 0; font-size: 0.9rem; color: #495057;">📖 API 키 발급 방법</h4>
+                <ol style="margin: 5px 0 0 15px; padding: 0; font-size: 0.8rem; color: #6c757d;">
+                    <li><a href="https://console.developers.google.com/" target="_blank" style="color: #007bff;">Google Cloud Console</a>에 접속</li>
+                    <li>프로젝트 생성 또는 선택</li>
+                    <li>"API 및 서비스" → "라이브러리"에서 "YouTube Data API v3" 활성화</li>
+                    <li>"사용자 인증 정보"에서 "API 키" 생성</li>
+                    <li>생성된 API 키를 복사하여 위에 입력</li>
+                </ol>
+                <div style="margin-top: 8px; font-size: 0.75rem; color: #6c757d;">
+                    💡 <strong>팁:</strong> API 키는 "AIza"로 시작하는 39자리 문자열입니다.
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="filter-modal" class="modal">
+        <div class="filter-modal">
+            <!-- 헤더 -->
+            <div class="modal-header">
+                <h3 class="modal-title">
+                    <span>⚙️</span>
+                    검색 필터 설정
+                </h3>
+                <span class="close-button">×</span>
+            </div>
+    
+            <!-- 메인 컨텐츠 -->
+            <div class="modal-content">
+                <div class="filter-container">
+                    <!-- 검색 설정 섹션 -->
+                    <div class="filter-section">
+                        <div class="filter-section-title">
+                            <span class="search-icon">📊</span>
+                            검색 설정
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">정렬 방식</label>
+                            <select class="filter-select" id="sort-by">
+                                <option value="relevance">관련성</option>
+                                <option value="date">최신순</option>
+                                <option value="viewCount">조회수</option>
+                                <option value="rating">평점</option>
+                            </select>
+                        </div>
+    
+                        <div class="filter-group">
+                            <label class="filter-label">영상 길이</label>
+                            <select class="filter-select" id="duration">
+                                <option value="any">전체</option>
+                                <option value="short">Short (1분 미만)</option>
+                                <option value="medium">Medium (1분 ~ 4분 미만)</option>
+                                <option value="long">Long (4분 ~ 20분)</option>
+                                <option value="longer">Longer (20분 초과)</option>
+                            </select>
+                        </div>
+    
+                        <div class="filter-group">
+                            <label class="filter-label">최대 결과 수</label>
+                            <div class="slider-input-container">
+                                <div class="slider-container">
+                                    <input type="range" class="slider" id="max-results" min="10" max="100" value="50" 
+                                           autocomplete="off">
+                                </div>
+                                <input type="number" class="max-results-input" id="max-results-input" 
+                                        min="10" max="100" value="50"
+                                        autocomplete="off"
+                                        onchange="window.youtubeApp?.uiManager?.updateSliderFromInput(this.value)"
+                                        onkeypress="if(event.key==='Enter') window.youtubeApp?.uiManager?.updateSliderFromInput(this.value)"
+                                        onfocus="this.select()"
+                                        onclick="this.select()">
+                            </div>
+                        </div>
+                        
+                    </div>
+    
+                    <!-- 범위 설정 섹션 -->
+                    <div class="filter-section">
+                        <div class="filter-section-title">
+                            <span class="range-icon">📈</span>
+                            범위 설정
+                        </div>
+                        
+                        <div class="filter-group">
+                            <label class="filter-label">조회수 범위</label>
+                            <div class="range-group">
+                                <input type="number" class="filter-input" id="min-views" placeholder="최소" min="0">
+                                <span class="range-separator">~</span>
+                                <input type="number" class="filter-input" id="max-views" placeholder="최대" min="0">
+                            </div>
+                        </div>
+    
+                        <div class="filter-group">
+                            <label class="filter-label">구독자 수 범위</label>
+                            <div class="range-group">
+                                <input type="number" class="filter-input" id="min-subscribers" placeholder="최소" min="0">
+                                <span class="range-separator">~</span>
+                                <input type="number" class="filter-input" id="max-subscribers" placeholder="최대" min="0">
+                            </div>
+                        </div>
+
+                        <!-- ✅ 추가: 업로드일 범위 필터 -->
+                        <div class="filter-group">
+                            <label class="filter-label">업로드일 범위</label>
+                            <div class="range-group">
+                                <input type="date" class="filter-input" id="upload-start-date" title="업로드 시작일">
+                                <span class="range-separator">~</span>
+                                <input type="date" class="filter-input" id="upload-end-date" title="업로드 종료일">
+                            </div>
+                        </div>
+    
+                        <div class="filter-group">
+                            <label class="filter-label">채널 개설일 범위</label>
+                            <div class="range-group">
+                                <input type="date" class="filter-input" id="channel-start-date">
+                                <span class="range-separator">~</span>
+                                <input type="date" class="filter-input" id="channel-end-date">
+                            </div>
+                        </div>
+                    </div>
+    
+                    <!-- 지역 & 언어 섹션 -->
+                    <div class="filter-section language-section">
+                        <div class="filter-section-title">
+                            <span class="language-icon">🌍</span>
+                            지역 & 언어
+                        </div>
+                        
+                        <div class="filter-group">
+                            <div class="checkbox-row">
+                                <input type="checkbox" id="korean-only" checked>
+                                <label for="korean-only">🇰🇷 한국어 콘텐츠 우선</label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+    
+                <!-- 액션 버튼 -->
+                <div class="modal-actions">
+                    <button class="btn btn-secondary" id="reset-filters-btn">
+                        <span>🔄</span>
+                        초기화
+                    </button>
+                    <button class="btn btn-primary" id="apply-filters-btn">
+                        <span>✨</span>
+                        적용
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="loading-overlay" class="modal">
+        <div class="modal-content">
+            <div class="loading-spinner"></div>
+            <div class="loading-text">검색 중입니다...</div>
+        </div>
+    </div>
+
+    <div id="custom-confirm-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">×</span>
+            <p id="confirm-message"></p>
+            <div class="modal-actions">
+                <button class="btn btn-secondary" id="confirm-cancel-btn">
+                    <span>🚫</span>
+                    취소
+                </button>
+                <button class="btn btn-primary" id="confirm-ok-btn">
+                    <span>🗑️</span>
+                    삭제
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="video-detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">×</span>
+            <div id="video-detail-content">
+            </div>
+        </div>
+    </div>
+
+    <div id="spam-analysis-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">×</span>
+            <div id="spam-analysis-content">
+            </div>
+        </div>
+    </div>
+
+    <div id="basic-stats-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-button">×</span>
+            <div id="basic-stats-content">
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="{{ url_for('static', filename='js/youtube/youtube-app.js') }}"></script>
+
+</body>
+</html>

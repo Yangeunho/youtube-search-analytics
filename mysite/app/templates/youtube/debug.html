@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <title>슬라이더 단독 테스트</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/youtube_styles.css') }}">
+</head>
+<body>
+    <h1>슬라이더 단독 테스트</h1>
+    <p>이 페이지에는 오직 슬라이더와 한 줄의 스크립트만 있습니다.</p>
+    <p>슬라이더를 다른 곳으로 옮긴 뒤, 새로고침(F5)을 여러 번 반복해보세요.</p>
+
+    <input type="range" id="my-test-slider" min="10" max="100" value="20">
+
+    <script>
+        // 페이지가 로드될 때마다 슬라이더 값을 50으로 설정합니다.
+        window.onload = function() {
+            document.getElementById('my-test-slider').value = 50;
+            console.log('테스트 슬라이더 값을 50으로 설정했습니다.');
+        };
+    </script>
+</body>
+</html>

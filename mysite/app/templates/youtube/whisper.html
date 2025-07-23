@@ -1,0 +1,785 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisper 자막 생성기</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #f8f9fa;
+            padding: 20px;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 480px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .content {
+            padding: 30px;
+        }
+
+        /* === 섹션 공통 === */
+        .section {
+            margin-bottom: 30px;
+        }
+
+        .section-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 15px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        /* === Colab 연결 (상단 간단 표시) === */
+        .colab-status {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 12px 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #721c24;
+        }
+
+        .colab-status.connected {
+            background: #d4edda;
+            border-color: #c3e6cb;
+            color: #155724;
+        }
+
+        .connect-link {
+            color: #007bff;
+            text-decoration: none;
+            font-size: 13px;
+            font-weight: 500;
+            padding: 4px 12px;
+            border-radius: 4px;
+            background: rgba(0, 123, 255, 0.1);
+        }
+
+        .connect-link:hover {
+            background: rgba(0, 123, 255, 0.2);
+        }
+
+        /* === Colab 연결 모달 === */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+        }
+
+        .modal-content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            border-radius: 12px;
+            padding: 25px;
+            width: 90%;
+            max-width: 480px;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .modal-title {
+            font-size: 18px;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #666;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .colab-guide {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .colab-link-btn {
+            display: inline-block;
+            background: #4285f4;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 6px;
+            text-decoration: none;
+            font-size: 14px;
+            margin-bottom: 15px;
+        }
+
+        .colab-link-btn:hover {
+            background: #3367d6;
+        }
+
+        /* 개선된 연결 옵션 스타일 */
+        .colab-options {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+            flex-wrap: wrap;
+        }
+
+        .colab-link-btn.primary {
+            background: #28a745;
+            font-weight: 600;
+            border: 2px solid #28a745;
+        }
+
+        .colab-link-btn.primary:hover {
+            background: #218838;
+            transform: scale(1.02);
+        }
+
+        .colab-link-btn.secondary {
+            background: #6c757d;
+            font-size: 13px;
+        }
+
+        .colab-link-btn.secondary:hover {
+            background: #5a6268;
+        }
+
+        .connection-guide {
+            background: #e7f3ff;
+            border-left: 4px solid #007bff;
+            padding: 15px;
+            border-radius: 0 8px 8px 0;
+            margin-bottom: 15px;
+            font-size: 14px;
+        }
+
+        .connection-guide ul {
+            margin: 8px 0 0 20px;
+            padding: 0;
+        }
+
+        .connection-guide li {
+            margin: 5px 0;
+        }
+
+        .url-input-group {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .url-input {
+            flex: 1;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+        }
+
+        .url-input:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        .connect-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 12px 20px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .connect-btn:hover {
+            background: #218838;
+        }
+
+        .connect-btn:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+        }
+
+        /* === 파일 업로드 (크기 절반으로 축소) === */
+        .upload-section.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .drop-zone {
+            border: 1px solid #ddd;
+            border-radius: 12px;
+            padding: 20px 15px; /* 기존 40px에서 20px로 축소 */
+            text-align: center;
+            background: #fafafa;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .drop-zone:hover {
+            border-color: #007bff;
+            background: #f8fbff;
+        }
+
+        .drop-zone.dragover {
+            border-color: #007bff;
+            background: #f8fbff;
+        }
+
+        .drop-icon {
+            font-size: 24px; /* 기존 32px에서 24px로 축소 */
+            margin-bottom: 10px; /* 기존 15px에서 10px로 축소 */
+            opacity: 0.6;
+        }
+
+        .drop-text {
+            font-size: 14px; /* 기존 16px에서 14px로 축소 */
+            color: #495057;
+            margin-bottom: 6px; /* 기존 8px에서 6px로 축소 */
+            font-weight: 500;
+        }
+
+        .drop-hint {
+            font-size: 12px; /* 기존 13px에서 12px로 축소 */
+            color: #6c757d;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .selected-file {
+            background: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 12px; /* 기존 15px에서 12px로 축소 */
+            margin-top: 12px; /* 기존 15px에서 12px로 축소 */
+            display: none;
+        }
+
+        .file-info {
+            display: flex;
+            align-items: center;
+            gap: 10px; /* 기존 12px에서 10px로 축소 */
+        }
+
+        .file-icon {
+            font-size: 18px; /* 기존 20px에서 18px로 축소 */
+        }
+
+        .file-details {
+            flex: 1;
+        }
+
+        .file-name {
+            font-weight: 500;
+            margin-bottom: 3px; /* 기존 4px에서 3px로 축소 */
+            font-size: 14px;
+        }
+
+        .file-size {
+            font-size: 11px; /* 기존 12px에서 11px로 축소 */
+            color: #6c757d;
+        }
+
+        .remove-file {
+            background: none;
+            border: none;
+            color: #dc3545;
+            cursor: pointer;
+            padding: 4px;
+            font-size: 16px;
+        }
+
+        /* === 설정 옵션 (2x2 그리드) === */
+        .settings-section.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+        }
+
+        .setting-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        .setting-label {
+            font-size: 14px;
+            color: #495057;
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        select, input[type="number"] {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            font-size: 14px;
+            background: white;
+            transition: border-color 0.3s ease;
+        }
+
+        select:focus, input[type="number"]:focus {
+            outline: none;
+            border-color: #007bff;
+        }
+
+        /* === 처리 버튼 === */
+        .process-section.disabled {
+            opacity: 0.5;
+            pointer-events: none;
+        }
+
+        .process-button {
+            width: 100%;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .process-button:hover:not(:disabled) {
+            background: #0056b3;
+            transform: translateY(-1px);
+        }
+
+        .process-button:disabled {
+            background: #6c757d;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* === 진행률 === */
+        .progress-section {
+            margin-top: 20px;
+            display: none;
+        }
+
+        .progress-bar {
+            width: 100%;
+            height: 6px;
+            background: #f0f0f0;
+            border-radius: 3px;
+            overflow: hidden;
+            margin-bottom: 12px;
+        }
+
+        .progress-fill {
+            height: 100%;
+            background: #007bff;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.3s ease;
+        }
+
+        .progress-text {
+            text-align: center;
+            font-size: 14px;
+            color: #495057;
+            font-weight: 500;
+        }
+
+        /* === 결과 === */
+        .result-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-top: 20px;
+            display: none;
+        }
+
+        .result-header {
+            margin-bottom: 15px;
+        }
+
+        .result-header h4 {
+            font-size: 16px;
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .stat-item {
+            text-align: center;
+            background: white;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .stat-number {
+            display: block;
+            font-size: 18px;
+            font-weight: 600;
+            color: #007bff;
+        }
+
+        .stat-label {
+            font-size: 11px;
+            color: #6c757d;
+            margin-top: 4px;
+        }
+
+        .download-links {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            text-decoration: none;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
+        /* === 메시지 === */
+        .message {
+            padding: 12px 16px;
+            border-radius: 6px;
+            margin-top: 15px;
+            display: none;
+            font-size: 14px;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        /* === 반응형 === */
+        @media (max-width: 768px) {
+            .container {
+                margin: 10px;
+                max-width: none;
+            }
+            
+            .settings-grid {
+                grid-template-columns: 1fr;
+                gap: 12px;
+            }
+            
+            .result-stats {
+                grid-template-columns: 1fr;
+                gap: 8px;
+            }
+            
+            .content {
+                padding: 20px;
+            }
+
+            .modal-content {
+                width: 95%;
+                padding: 20px;
+            }
+
+            .download-links {
+                flex-direction: column;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="content">
+            <!-- Colab 연결 상태 -->
+            <div class="colab-status disconnected" id="colabStatus">
+                <span>⚠️ Colab 서버 연결 필요</span>
+                <a href="#" class="connect-link" id="connectLink">연결하기</a>
+            </div>
+
+            <!-- 파일 업로드 (크기 축소) -->
+            <div class="section">
+                <div class="section-title">
+                    🎤 음성/동영상 파일
+                </div>
+                <div class="upload-section disabled" id="uploadSection">
+                    <div class="drop-zone" id="dropZone">
+                        <div class="drop-icon">📁</div>
+                        <div class="drop-text">파일을 드래그하거나 클릭하세요</div>
+                        <div class="drop-hint">MP3, WAV, MP4, AVI 등 지원</div>
+                        <input type="file" 
+                               id="audioFile" 
+                               class="file-input" 
+                               accept=".mp3,.wav,.m4a,.aac,.flac,.ogg,.mp4,.avi,.mov,.mkv,.wmv,.webm">
+                    </div>
+                    
+                    <div class="selected-file" id="selectedFile">
+                        <div class="file-info">
+                            <div class="file-icon">🎵</div>
+                            <div class="file-details">
+                                <div class="file-name" id="fileName"></div>
+                                <div class="file-size" id="fileSize"></div>
+                            </div>
+                            <button class="remove-file" id="removeFile">✕</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 추출 설정 (2x2 그리드) -->
+            <div class="section">
+                <div class="section-title">
+                    ⚙️ 추출 설정
+                </div>
+                <div class="settings-section disabled" id="settingsSection">
+                    <div class="settings-grid">
+                        <div class="setting-item">
+                            <label class="setting-label">언어</label>
+                            <select id="language">
+                                <option value="auto">자동감지</option>
+                                <option value="ko">한국어</option>
+                                <option value="en">영어</option>
+                                <option value="ja">일본어</option>
+                                <option value="zh">중국어</option>
+                                <option value="es">스페인어</option>
+                                <option value="fr">프랑스어</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label class="setting-label">출력 형식</label>
+                            <select id="outputFormat">
+                                <option value="srt">SRT</option>
+                                <option value="vtt">VTT</option>
+                                <option value="txt">TXT</option>
+                                <option value="all">모든 형식</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label class="setting-label">AI 모델</label>
+                            <select id="model">
+                                <option value="medium">Medium (균형)</option>
+                                <option value="large">Large (정확)</option>
+                                <option value="large-v2">Large-v2 (개선)</option>
+                                <option value="large-v3" selected>Large-v3 (최신) ⭐</option>
+                            </select>
+                        </div>
+                        
+                        <div class="setting-item">
+                            <label class="setting-label">타임스탬프</label>
+                            <select id="timestamp">
+                                <option value="segment">세그먼트별</option>
+                                <option value="word" selected>단어별</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 자막 추출 버튼 -->
+            <div class="process-section disabled" id="processSection">
+                <button class="process-button" id="processButton">
+                    🚀 자막 추출 시작
+                </button>
+
+                <!-- 진행률 -->
+                <div class="progress-section" id="progressSection">
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="progressFill"></div>
+                    </div>
+                    <div class="progress-text" id="progressText">처리 중...</div>
+                </div>
+
+                <!-- 결과 다운로드 -->
+                <div class="result-section" id="resultSection">
+                    <div class="result-header">
+                        <h4>✅ 자막 생성 완료!</h4>
+                        <div class="result-stats">
+                            <div class="stat-item">
+                                <span class="stat-number" id="segmentCount">0</span>
+                                <div class="stat-label">자막 개수</div>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="processingTime">0</span>
+                                <div class="stat-label">처리 시간(분)</div>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number" id="detectedLanguage">-</span>
+                                <div class="stat-label">감지 언어</div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <p style="margin: 8px 0; color: #6c757d; font-size: 14px;">생성된 자막 파일을 다운로드하세요:</p>
+                    <div class="download-links" id="downloadLinks">
+                        <!-- 다운로드 링크들이 여기에 생성됩니다 -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- 메시지 -->
+            <div class="message" id="messageBox"></div>
+        </div>
+    </div>
+
+    <!-- Colab 연결 모달 -->
+    <div class="modal" id="colabModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3 class="modal-title">Colab 서버 연결</h3>
+                <button class="modal-close" id="modalClose">✕</button>
+            </div>
+            
+            <div class="colab-guide">
+                <strong>📋 연결 방법:</strong><br>
+                1. 아래 링크로 Colab 노트북을 열어주세요<br>
+                2. 모든 셀을 실행하여 Whisper 서버를 시작하세요<br>
+                3. 생성된 ngrok URL을 복사하여 아래에 입력하세요
+            </div>
+            
+            <!-- 개선: GitHub 없이 직접 연결 -->
+            <div class="colab-options">
+                <!-- Option 1: Google Drive 직접 링크 (추천) -->
+                <a href="https://colab.research.google.com/drive/1c8aUm7yvB_JL00DKVzmkzURdEeOfg5AB" 
+                   class="colab-link-btn primary" target="_blank"
+                   onclick="trackColabClick('drive_direct')">
+                    ⚡ Colab 노트북 열기 (빠른 연결)
+                </a>
+                
+                <!-- Option 2: GitHub 백업 링크 -->
+                <a href="https://colab.research.google.com/github/Yangeunho/job/blob/main/TipMaster_Whisper_Backend.ipynb" 
+                   class="colab-link-btn secondary" target="_blank"
+                   onclick="trackColabClick('github_backup')">
+                    🔄 백업 링크 (GitHub 경유)
+                </a>
+            </div>
+            
+            <!-- 연결 방식 설명 -->
+            <div class="connection-guide">
+                <p><strong>💡 연결 팁:</strong></p>
+                <ul>
+                    <li>🎯 <strong>빠른 연결</strong>: 위 '빠른 연결' 버튼 사용 권장</li>
+                    <li>🔄 연결 실패 시: '백업 링크' 사용</li>
+                    <li>⚡ 직접 연결로 안정성 대폭 향상!</li>
+                </ul>
+            </div>
+            
+            <div class="url-input-group">
+                <input type="text" 
+                       class="url-input" 
+                       id="colabUrlInput" 
+                       placeholder="https://xxxxx.ngrok-free.app">
+                <button class="connect-btn" id="connectBtn">연결</button>
+            </div>
+            
+            <div class="message" id="modalMessage"></div>
+        </div>
+    </div>
+
+    <!-- JavaScript 외부 파일로 로드 -->
+    <script src="/static/js/whisper/whisper-api.js"></script>
+    
+    <!-- Phase 1: 연결 방식 트래킹 -->
+    <script>
+        function trackColabClick(linkType) {
+            console.log(`🔗 Colab 링크 클릭: ${linkType}`);
+            
+            // Google Analytics 트래킹 (있는 경우)
+            if (typeof gtag !== 'undefined') {
+                gtag('event', 'colab_link_click', {
+                    event_category: 'deployment_improvement',
+                    event_label: linkType,
+                    value: 1
+                });
+            }
+            
+            // 로컬 통계 (콘솔 로그)
+            const clickData = {
+                timestamp: new Date().toISOString(),
+                linkType: linkType,
+                userAgent: navigator.userAgent
+            };
+            
+            // 나중에 서버로 전송 가능
+            console.log('📊 클릭 데이터:', clickData);
+        }
+        
+        // 페이지 로드시 개선 알림
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log('🚀 Phase 1 개선 적용 완료:');
+            console.log('  - GitHub 우회 직접 연결 옵션 추가');
+            console.log('  - 연결 속도 개선 (3초 → 1초 예상)');
+            console.log('  - 백업 연결 옵션 유지');
+            console.log('  - 클릭 트래킹 시스템 활성화');
+        });
+    </script>
+</body>
+</html>

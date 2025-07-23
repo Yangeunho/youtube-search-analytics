@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>유튜브 검색 & 트렌드 분석 도구 - 모바일 버전 | 무료 떡상 영상 찾기</title>
+    <meta name="description" content="모바일에서 간편하게 유튜브 떡상 영상을 찾아보세요! 무료 유튜브 검색 도구로 바이럴 영상 분석, 트렌드 예측까지!">
+    <meta name="keywords" content="유튜브 검색, 떡상 영상, 바이럴 분석, 유튜브 트렌드, 영상 분석 도구, 무료 도구, 모바일">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="유튜브 검색 & 트렌드 분석 도구 - 모바일">
+    <meta property="og:description" content="모바일에서 간편하게 유튜브 떡상 영상을 찾고 트렌드를 분석하세요!">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tipmaster.co.kr/youtube-mobile/">
+    
+    <!-- 파비콘 -->
+    <link rel="icon" href="https://tipmaster.co.kr/favicon.ico" type="image/x-icon">
+    
+    <!-- 애드센스 헤드 태그 (나중에 추가) -->
+    <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID" crossorigin="anonymous"></script> -->
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f8f9fa;
+            line-height: 1.6;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        /* 헤더 영역 */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .header h1 {
+            font-size: 1.6rem;
+            margin-bottom: 5px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 0.95rem;
+            opacity: 0.9;
+            margin-bottom: 0;
+        }
+        
+        /* 모바일 도구 영역 */
+        .mobile-container {
+            position: relative;
+            background: white;
+            min-height: calc(100vh - 200px);
+            overflow-y: auto;
+        }
+        
+        .tool-iframe {
+            width: 100%;
+            height: calc(100vh - 70px);
+            min-height: 600px;
+            border: none;
+            display: block;
+        }
+        
+        
+        /* 모바일 최적화 */
+        @media (max-width: 480px) {
+            .header {
+                padding: 10px 15px;
+            }
+            
+            .header h1 {
+                font-size: 1.4rem;
+            }
+            
+            .header p {
+                font-size: 0.85rem;
+            }
+            
+            .tool-iframe {
+                height: calc(100vh - 60px);
+                min-height: 500px;
+            }
+        }
+        
+        /* 세로형 모바일 */
+        @media (max-height: 667px) and (max-width: 480px) {
+            .tool-iframe {
+                height: calc(100vh - 50px);
+                min-height: 450px;
+            }
+        }
+        
+        /* 로딩 애니메이션 */
+        .loading {
+            text-align: center;
+            padding: 40px 20px;
+            font-size: 1.1rem;
+            color: #6c757d;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 8px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        
+        /* 하단 고정 네비게이션 */
+        .bottom-navigation {
+            position: fixed !important;
+            bottom: 0 !important;
+            left: 0 !important;
+            right: 0 !important;
+            width: 100% !important;
+            background: white;
+            border-top: 1px solid #e9ecef;
+            padding: 15px 20px;
+            padding-bottom: calc(15px + env(safe-area-inset-bottom));
+            display: flex;
+            gap: 10px;
+            z-index: 1000 !important;
+            box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .nav-btn {
+            flex: 1;
+            padding: 12px;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 5px;
+            text-decoration: none;
+        }
+        
+        .nav-btn:active {
+            transform: scale(0.95);
+        }
+        
+        .nav-btn.primary {
+            background: #667eea;
+            color: white;
+        }
+        
+        .nav-btn.secondary {
+            background: #f8f9fa;
+            color: #666;
+            border: 1px solid #e9ecef;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 영역 -->
+        <header class="header">
+            <h1>📱 유튜브 검색 도구</h1>
+            <p>무료 떡상 영상 찾기 PC 에서는 더 상세하게...</p>
+        </header>
+        
+        <!-- 모바일 도구 영역 -->
+        <div class="mobile-container" id="mobile-container">
+            <iframe id="youtube-mobile-tool" 
+                    class="tool-iframe" 
+                    src="https://api.tipmaster.co.kr/youtube/mobile" 
+                    title="유튜브 검색 도구 - 모바일"
+                    loading="lazy"
+                    allowfullscreen>
+            </iframe>
+        </div>
+        
+        
+        <!-- 하단 고정 네비게이션 -->
+        <div class="bottom-navigation">
+            <button class="nav-btn secondary" onclick="sendMessageToIframe('home')">🏠 홈</button>
+            <button class="nav-btn primary" onclick="sendMessageToIframe('search')">🎬 검색결과</button>
+            <button class="nav-btn secondary" onclick="sendMessageToIframe('analysis')">📊 분석</button>
+        </div>
+    </div>
+    
+    <script>
+        // 즉시 데스크탑 감지 및 리다이렉트  
+        (function() {
+            // URL 파라미터로 강제 모바일 모드 확인
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('mobile') === 'true') {
+                console.log('강제 모바일 모드');
+                return; // 리다이렉트 안함
+            }
+            
+            // 데스크탑 감지 (큰 화면 + 모바일 아닌 User Agent)
+            const isDesktop = window.innerWidth > 1024 && 
+                            !/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile/i.test(navigator.userAgent);
+            
+            if (isDesktop) {
+                window.location.replace('https://tipmaster.co.kr/youtube-tool/');
+                return;
+            }
+        })();
+        
+        // 모바일 전용 초기화
+            document.addEventListener('DOMContentLoaded', function() {
+            // iframe 로딩 상태 관리
+            const iframe = document.getElementById('youtube-mobile-tool');
+            const toolContainer = document.querySelector('.mobile-container');
+            
+            // 로딩 인디케이터 추가
+            function showLoading() {
+                const loading = document.createElement('div');
+                loading.className = 'loading';
+                loading.innerHTML = '모바일 도구 로딩 중';
+                toolContainer.appendChild(loading);
+            }
+            
+            // 로딩 인디케이터 제거
+            function hideLoading() {
+                const loading = document.querySelector('.loading');
+                if (loading) {
+                    loading.remove();
+                }
+            }
+            
+            // iframe 이벤트 리스너 등록
+            if (iframe) {
+                iframe.addEventListener('load', function() {
+                    console.log('Mobile iframe loaded');
+                    hideLoading();
+                });
+                
+                iframe.addEventListener('error', function() {
+                    console.error('Mobile iframe failed to load');
+                    hideLoading();
+                    toolContainer.innerHTML = `
+                        <div style="text-align: center; padding: 40px 20px; color: #e74c3c;">
+                            <h3>❌ 도구 로딩 실패</h3>
+                            <p>잠시 후 다시 시도해주세요.</p>
+                            <button onclick="location.reload()" style="padding: 12px 24px; margin-top: 15px; background: #3498db; color: white; border: none; border-radius: 8px; cursor: pointer; font-size: 0.9rem;">
+                                새로고침
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+            
+            // 초기 로딩 표시
+            showLoading();
+            
+            // 모바일 터치 최적화
+            document.addEventListener('touchstart', function() {}, { passive: true });
+            
+            // 화면 회전 감지 및 iframe 높이 조정
+            function adjustIframeHeight() {
+                if (iframe) {
+                    const headerHeight = document.querySelector('.header').offsetHeight;
+                    const navHeight = 70; // 하단 네비게이션 높이
+                    const viewportHeight = window.innerHeight;
+                    const newHeight = Math.max(450, viewportHeight - headerHeight - navHeight - 10);
+                    iframe.style.height = newHeight + 'px';
+                }
+            }
+            
+            // 화면 크기 변경 시 높이 조정
+            window.addEventListener('resize', adjustIframeHeight);
+            window.addEventListener('orientationchange', function() {
+                setTimeout(adjustIframeHeight, 300); // 화면 회전 완료 후 조정
+            });
+            
+            // 초기 높이 설정
+            setTimeout(adjustIframeHeight, 100);
+        });
+        
+        // iframe과 통신하는 함수
+        function sendMessageToIframe(action) {
+            const iframe = document.getElementById('youtube-mobile-tool');
+            if (iframe && iframe.contentWindow) {
+                console.log('📱 블로그에서 iframe에 메시지 전송:', action);
+                
+                iframe.contentWindow.postMessage({
+                    type: 'NAVIGATION_ACTION',
+                    action: action
+                }, '*');
+                
+                // 분석 버튼 클릭 시 시각적 피드백
+                if (action === 'analysis') {
+                    const analysisBtn = document.querySelector('[onclick*="analysis"]');
+                    if (analysisBtn) {
+                        analysisBtn.style.transform = 'scale(0.95)';
+                        analysisBtn.style.background = '#5a67d8';
+                        setTimeout(() => {
+                            analysisBtn.style.transform = '';
+                            analysisBtn.style.background = '';
+                        }, 200);
+                    }
+                }
+            }
+        }
+        
+        // PWA 지원을 위한 서비스 워커 등록 (선택사항)
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', function() {
+                // 서비스 워커가 있다면 등록
+                // navigator.serviceWorker.register('/sw.js');
+            });
+        }
+    </script>
+</body>
+</html>

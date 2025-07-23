@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>유튜브 검색 & 트렌드 분석 도구 - 무료 떡상 영상 찾기</title>
+    <meta name="description" content="유튜브 떡상 영상을 찾아보세요! 무료 유튜브 검색 도구로 바이럴 영상 분석, 트렌드 예측, 경쟁 채널 분석까지 한 번에!">
+    <meta name="keywords" content="유튜브 검색, 떡상 영상, 바이럴 분석, 유튜브 트렌드, 영상 분석 도구, 무료 도구">
+    
+    <!-- Open Graph Meta Tags -->
+    <meta property="og:title" content="유튜브 검색 & 트렌드 분석 도구">
+    <meta property="og:description" content="무료로 유튜브 떡상 영상을 찾고 트렌드를 분석하세요!">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://tipmaster.co.kr/youtube-tool/">
+    
+    <!-- 파비콘 -->
+    <link rel="icon" href="https://tipmaster.co.kr/favicon.ico" type="image/x-icon">
+    
+    <!-- 애드센스 헤드 태그 (나중에 추가) -->
+    <!-- <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-YOUR_PUBLISHER_ID" crossorigin="anonymous"></script> -->
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: #f5f5f5;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 100%;
+            margin: 0 auto;
+            background: white;
+            min-height: 100vh;
+        }
+        
+        /* 헤더 영역 */
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 15px 20px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            position: relative;
+        }
+        
+        .header h1 {
+            font-size: 2.2rem;
+            margin-bottom: 10px;
+            font-weight: 700;
+        }
+        
+        .header p {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin-bottom: 0;
+        }
+        
+        /* API 키 가이드 버튼 */
+        .api-guide-btn {
+            position: absolute;
+            right: 20px;
+            bottom: 15px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            padding: 8px 15px;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 20px;
+            text-decoration: none;
+            font-size: 0.85rem;
+            transition: all 0.3s ease;
+            backdrop-filter: blur(10px);
+            cursor: pointer !important;
+            display: inline-block;
+            line-height: 1.2;
+            z-index: 10;
+            min-height: 20px;
+            box-sizing: border-box;
+            white-space: nowrap;
+        }
+        
+        .api-guide-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
+            border-color: rgba(255, 255, 255, 0.5);
+            transform: scale(1.05);
+            color: white;
+            text-decoration: none;
+            cursor: pointer !important;
+        }
+        
+        .api-guide-btn * {
+            cursor: pointer !important;
+        }
+        
+        
+        /* 데스크탑 도구 영역 */
+        .desktop-container {
+            position: relative;
+            background: white;
+        }
+        
+        .tool-iframe {
+            width: 100%;
+            height: 800px;
+            border: none;
+            display: block;
+        }
+        
+        /* 푸터 */
+        .footer {
+            background: #2c3e50;
+            color: white;
+            padding: 30px 20px;
+            text-align: center;
+        }
+        
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .footer h3 {
+            margin-bottom: 15px;
+            color: #3498db;
+        }
+        
+        .footer p {
+            margin-bottom: 10px;
+            opacity: 0.8;
+        }
+        
+        .footer-links {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            margin-top: 20px;
+            flex-wrap: wrap;
+        }
+        
+        .footer-links a {
+            color: #3498db;
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        
+        .footer-links a:hover {
+            color: #2980b9;
+        }
+        
+        /* 반응형 디자인 */
+        @media (max-width: 768px) {
+            .header h1 {
+                font-size: 1.8rem;
+            }
+            
+            .tool-iframe {
+                height: 600px;
+            }
+            
+            .api-guide-btn {
+                position: static;
+                transform: none;
+                margin-top: 10px;
+                display: inline-block;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .header {
+                padding: 15px 10px;
+            }
+            
+            .header h1 {
+                font-size: 1.5rem;
+            }
+            
+            .tool-iframe {
+                height: 500px;
+            }
+        }
+        
+        /* 로딩 애니메이션 */
+        .loading {
+            text-align: center;
+            padding: 50px;
+            font-size: 1.2rem;
+            color: #6c757d;
+        }
+        
+        .loading::after {
+            content: '';
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-left: 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 헤더 영역 -->
+        <header class="header">
+            <a href="https://tipmaster.co.kr/youtube-api-guide/" class="api-guide-btn" target="_blank">
+                📖 API 키 발급 가이드
+            </a>
+            <h1>🎯 유튜브 검색 & 트렌드 분석 도구</h1>
+            <p>무료로 유튜브 떡상 영상을 찾고 트렌드를 분석하세요!</p>
+        </header>
+        
+        <!-- 데스크탑 도구 영역 -->
+        <div class="desktop-container" id="desktop-container">
+            <iframe id="youtube-tool"
+                    class="tool-iframe"
+                    src="https://api.tipmaster.co.kr/youtube/"
+                    title="유튜브 검색 도구"
+                    loading="lazy"
+                    allow="clipboard-write">
+            </iframe>
+        </div>
+        
+        <!-- 푸터 -->
+        <footer class="footer">
+            <div class="footer-content">
+                <h3>🚀 더 많은 도구들</h3>
+                <p>유튜브 검색 도구 외에도 다양한 분석 도구들을 제공합니다.</p>
+                <div class="footer-links">
+                    <a href="https://tipmaster.co.kr/">블로그 홈</a>
+                    <a href="https://tipmaster.co.kr/about/">소개</a>
+                    <a href="https://tipmaster.co.kr/contact/">문의</a>
+                    <a href="https://tipmaster.co.kr/ai-analysis-guide/" target="_blank">AI분석 가이드</a>
+                </div>
+                <p style="margin-top: 20px; font-size: 0.9rem;">
+                    © 2024 TipMaster. 모든 권리 보유.
+                </p>
+            </div>
+        </footer>
+    </div>
+    
+    <script>
+        // 즉시 모바일 감지 및 리다이렉트
+        (function() {
+            // URL 파라미터로 강제 데스크탑 모드 확인
+            const urlParams = new URLSearchParams(window.location.search);
+            if (urlParams.get('desktop') === 'true') {
+                console.log('강제 데스크탑 모드');
+                return; // 리다이렉트 안함
+            }
+            
+            // 모바일 감지
+            const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
+                            window.innerWidth <= 768;
+            
+            if (isMobile) {
+                window.location.replace('https://tipmaster.co.kr/youtube-mobile/');
+                return;
+            }
+        })();
+        
+        // 데스크탑 전용 초기화
+            document.addEventListener('DOMContentLoaded', function() {
+            // iframe 로딩 상태 관리
+            const iframe = document.getElementById('youtube-tool');
+            const toolContainer = document.querySelector('.desktop-container');
+            
+            // 로딩 인디케이터 추가
+            function showLoading() {
+                const loading = document.createElement('div');
+                loading.className = 'loading';
+                loading.innerHTML = '도구 로딩 중';
+                toolContainer.appendChild(loading);
+            }
+            
+            // 로딩 인디케이터 제거
+            function hideLoading() {
+                const loading = document.querySelector('.loading');
+                if (loading) {
+                    loading.remove();
+                }
+            }
+            
+            // iframe 이벤트 리스너 등록
+            if (iframe) {
+                iframe.addEventListener('load', function() {
+                    console.log('Desktop iframe loaded');
+                    hideLoading();
+                });
+                
+                iframe.addEventListener('error', function() {
+                    console.error('Desktop iframe failed to load');
+                    hideLoading();
+                    toolContainer.innerHTML = `
+                        <div style="text-align: center; padding: 50px; color: #e74c3c;">
+                            <h3>❌ 도구 로딩 실패</h3>
+                            <p>잠시 후 다시 시도해주세요.</p>
+                            <button onclick="location.reload()" style="padding: 10px 20px; margin-top: 15px; background: #3498db; color: white; border: none; border-radius: 5px; cursor: pointer;">
+                                새로고침
+                            </button>
+                        </div>
+                    `;
+                });
+            }
+            
+            // 초기 로딩 표시
+            showLoading();
+        });
+    </script>
+</body>
+</html>
