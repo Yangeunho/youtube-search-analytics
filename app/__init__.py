@@ -4,7 +4,6 @@ from dotenv import load_dotenv
 
 def create_app():
     app = Flask(__name__)
-    app.secret_key = "whisper-secret-key-2025-tipmaster"
     # CORS 설정 - 개발 중에는 모든 도메인 허용
     CORS(app, resources={
         r"/*": {  # 모든 경로에 대해
@@ -40,20 +39,6 @@ def create_app():
         print("💡 youtube_search.py 파일을 확인해주세요.")
     except Exception as e:
         print(f"❌ YouTube 서비스 등록 중 오류: {e}")
-        print("🔄 기존 서비스는 정상적으로 작동합니다.")
-
-    # 🆕 Whisper 자막 생성 서비스 추가 (기존 코드는 절대 건드리지 않음)
-    try:
-        from .routes.whisper import whisper_bp
-        # YouTube 서비스 하위에 추가 (기존 경로와 충돌 방지)
-        app.register_blueprint(whisper_bp, url_prefix='/youtube')
-        print("✅ Whisper 자막 생성 서비스가 성공적으로 추가되었습니다.")
-        print("📍 접속 경로: /youtube/whisper/")
-    except ImportError as e:
-        print(f"⚠️ Whisper 서비스 로드 실패 (파일 없음): {e}")
-        print("💡 whisper.py 파일을 확인해주세요.")
-    except Exception as e:
-        print(f"❌ Whisper 서비스 등록 중 오류: {e}")
         print("🔄 기존 서비스는 정상적으로 작동합니다.")
 
     return app
