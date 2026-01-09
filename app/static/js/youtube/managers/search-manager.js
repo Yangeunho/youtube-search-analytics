@@ -71,11 +71,214 @@ class SearchManager {
     }
 
     /**
-     * 🚀 고속 검색 수행 (최적화된 흐름)
+     * 하이브리드 검색을 수행합니다 (단일/다중 검색 자동 판별).
+     * @param {string} query - 검색어 (쉼표로 구분 시 다중 검색)
+     * @returns {Promise<Array>} 검색 결과 배열
+     */
+    async performHybridSearch(query) {
+        if (!query || !query.trim()) {
+            this.uiManager.showNotification('검색어를 입력해주세요.', 'warning');
+            return [];
+        }
+
+        const trimmedQuery = query.trim();
+        
+        // 쉼표 감지로 단일/다중 검색 판별
+        if (trimmedQuery.includes(',')) {
+            // 다중 검색
+            return this.performMultiSearch(trimmedQuery);
+        } else {
+            // 단일 검색
+            return this.performSingleSearch(trimmedQuery);
+        }
+    }
+
+    /**
+     * 단일 검색을 수행합니다.
+     * @param {string} keyword - 단일 검색 키워드
+     * @returns {Promise<Array>} 검색 결과 배열
+     */
+    async performSingleSearch(keyword) {
+        try {
+            const { isApiMode, currentApiKey, searchFilters } = this.dataManager;
+            
+            this.uiManager.showLoadingOverlay();
+            this.showProgressiveNotification(`"${keyword}" 검색 중...`, 'info');
+
+            let videos = [];
+            
+            if (isApiMode && currentApiKey) {
+                // API 모드 검색
+                videos = await ApiHelpers.performRealSearch(
+                    keyword,
+                    currentApiKey,
+                    {
+                        sortBy: searchFilters.sortBy,
+                        duration: searchFilters.duration,
+                        uploadStartDate: searchFilters.uploadStartDate,
+                        uploadEndDate: searchFilters.uploadEndDate,
+                        maxResults: searchFilters.maxResults,
+                        minViews: searchFilters.minViews,
+                        maxViews: searchFilters.maxViews,
+                        minSubscribers: searchFilters.minSubscribers,
+                        maxSubscribers: searchFilters.maxSubscribers,
+                        channelStartDate: searchFilters.channelStartDate,
+                        channelEndDate: searchFilters.channelEndDate,
+                        koreanOnly: searchFilters.koreanOnly
+                    },
+                    this.uiManager.showNotification.bind(this.uiManager)
+                );
+            } else {
+                // ✅ 기존 ApiHelpers.performHybridSearch 사용 (체험 로직 내장)
+                videos = await ApiHelpers.performHybridSearch(
+                    keyword,
+                    isApiMode ? currentApiKey : '',
+                    searchFilters,
+                    this.uiManager.showNotification.bind(this.uiManager)
+                );
+            }
+
+            // 레전드 데이터로 확장
+            const enrichedVideos = this.dataManager.enrichVideosWithLegendData(
+                videos, 
+                keyword, 
+                'single', 
+                this
+            );
+
+            this.showProgressiveNotification(
+                `단일 검색 완료: ${enrichedVideos.length}개 결과`, 
+                'success'
+            );
+
+            return enrichedVideos;
+
+        } catch (error) {
+            console.error('단일 검색 오류:', error);
+            this.handleSearchError(error);
+            return [];
+        } finally {
+            this.uiManager.hideLoadingOverlay();
+        }
+    }
+
+    /**
+     * 다중 검색을 수행합니다.
+     * @param {string} queryString - 쉼표로 구분된 키워드 문자열
+     * @returns {Promise<Array>} 레전드 필터링된 통합 검색 결과 배열
+     */
+    async performMultiSearch(queryString) {
+        try {
+            // 키워드 분리 및 정리
+            const keywords = queryString.split(',')
+                .map(k => k.trim())
+                .filter(k => k.length > 0);
+
+            if (keywords.length === 0) {
+                this.uiManager.showNotification('유효한 검색어가 없습니다.', 'warning');
+                return [];
+            }
+
+            this.uiManager.showLoadingOverlay();
+            this.showProgressiveNotification(
+                `다중 검색 시작: ${keywords.length}개 키워드`, 
+                'info'
+            );
+
+            const { isApiMode, currentApiKey, searchFilters } = this.dataManager;
+            const searchResults = [];
+
+            // 키워드별 병렬 검색
+            const searchPromises = keywords.map(async (keyword, index) => {
+                try {
+                    this.showProgressiveNotification(
+                        `검색 중: "${keyword}" (${index + 1}/${keywords.length})`, 
+                        'info'
+                    );
+
+                    let videos = [];
+
+                    if (isApiMode && currentApiKey) {
+                        // API 모드 검색 (기존 모든 필터 적용)
+                        videos = await ApiHelpers.performRealSearch(
+                            keyword,
+                            currentApiKey,
+                            {
+                                sortBy: searchFilters.sortBy,
+                                duration: searchFilters.duration,
+                                uploadStartDate: searchFilters.uploadStartDate,
+                                uploadEndDate: searchFilters.uploadEndDate,
+                                maxResults: searchFilters.maxResults,
+                                minViews: searchFilters.minViews,
+                                maxViews: searchFilters.maxViews,
+                                minSubscribers: searchFilters.minSubscribers,
+                                maxSubscribers: searchFilters.maxSubscribers,
+                                channelStartDate: searchFilters.channelStartDate,
+                                channelEndDate: searchFilters.channelEndDate,
+                                koreanOnly: searchFilters.koreanOnly
+                            },
+                            () => {} // 개별 키워드 알림은 숨김
+                        );
+                    } else {
+                        // ✅ 기존 ApiHelpers.performHybridSearch 사용 (체험 로직 내장)
+                        videos = await ApiHelpers.performHybridSearch(
+                            keyword,
+                            isApiMode ? currentApiKey : '',
+                            searchFilters,
+                            () => {}
+                        );
+                    }
+
+                    // 레전드 데이터로 확장
+                    const enrichedVideos = this.dataManager.enrichVideosWithLegendData(
+                        videos, 
+                        keyword, 
+                        'multi', 
+                        this
+                    );
+
+                    return {
+                        keyword: keyword,
+                        videos: enrichedVideos
+                    };
+
+                } catch (error) {
+                    console.error(`키워드 "${keyword}" 검색 실패:`, error);
+                    return {
+                        keyword: keyword,
+                        videos: []
+                    };
+                }
+            });
+
+            // 모든 검색 완료 대기
+            const results = await Promise.all(searchPromises);
+            
+            // 결과 통합 및 레전드 필터링
+            const mergedVideos = this.dataManager.mergeMultiSearchResults(results, this);
+            
+            this.showProgressiveNotification(
+                `다중 검색 완료: ${mergedVideos.length}개 레전드 발견`, 
+                'success'
+            );
+
+            return mergedVideos;
+
+        } catch (error) {
+            console.error('다중 검색 오류:', error);
+            this.handleSearchError(error);
+            return [];
+        } finally {
+            this.uiManager.hideLoadingOverlay();
+        }
+    }
+
+    /**
+     * 🚀 고속 검색 수행 (하이브리드 검색 통합)
      */
     async performSearchOptimized() {
         const query = this.searchInput ? this.searchInput.value.trim() : '';
-        const { isApiMode, currentApiKey, searchFilters } = this.dataManager;
+        const { isApiMode, currentApiKey } = this.dataManager;
 
         if (!query) {
             this.uiManager.showNotification('검색어를 입력해주세요.', 'warning');
@@ -88,78 +291,32 @@ class SearchManager {
             return;
         }
 
-        // 🚀 즐시 UI 업데이트 (체감 속도 향상)
-        this.uiManager.showLoadingOverlay();
-        this.showProgressiveNotification('검색 준비 중...', 'info');
-
         try {
-            let videos = [];
             const startTime = performance.now();
             
-            // 🚀 최적화된 하이브리드 검색 사용
-            videos = await ApiHelpers.performHybridSearch(
-                query,
-                isApiMode ? currentApiKey : '',
-                searchFilters,
-                this.showProgressiveNotification.bind(this)
-            );
+            // 🚀 하이브리드 검색 수행
+            const videos = await this.performHybridSearch(query);
             
             const duration = Math.round(performance.now() - startTime);
             
-            // 기존 로직 (하이브리드 검색 실패 시 대체)
-            if (!videos || videos.length === 0) {
-                if (isApiMode && currentApiKey) {
-                    // 🔧 수정: API 모드 검색 (대체 로직)
-                    videos = await ApiHelpers.performRealSearch(
-                        query, 
-                        currentApiKey, // 🔧 암호화하지 않고 원본 API 키 전달
-                        {
-                            sortBy: searchFilters.sortBy,
-                            duration: searchFilters.duration,
-                            // uploadDate: searchFilters.uploadDate,            // ✅ 제거
-                            uploadStartDate: searchFilters.uploadStartDate,
-                            uploadEndDate: searchFilters.uploadEndDate,
-                            maxResults: searchFilters.maxResults,
-                            minViews: searchFilters.minViews,
-                            maxViews: searchFilters.maxViews,
-                            minSubscribers: searchFilters.minSubscribers,
-                            maxSubscribers: searchFilters.maxSubscribers,
-                            channelStartDate: searchFilters.channelStartDate,  // ✅ 추가
-                            channelEndDate: searchFilters.channelEndDate,      // ✅ 추가
-                            // channelYear: searchFilters.channelYear,          // ✅ 제거
-                            koreanOnly: searchFilters.koreanOnly
-                            // channelType: searchFilters.channelType,          // ✅ 제거
-                            // videoDimension: searchFilters.videoDimension,    // ✅ 제거
-                            // pageToken: this.dataManager.nextPageToken
-                        },
-                        this.uiManager.showNotification.bind(this.uiManager)
-                    );
-                } else {
-                    // 🔧 수정: 데모 모드 검색
-                    videos = await ApiHelpers.performDemoSearch(
-                        query,
-                        {
-                            maxResults: searchFilters.maxResults
-                        },
-                        this.uiManager.showNotification.bind(this.uiManager)
-                    );
-                }
-            }
-
-            // 🚀 데이터 처리
+            // 🚀 데이터 처리 및 UI 업데이트
             this.dataManager.currentVideos = videos || [];
             this.dataManager.clearSelectedVideos();
+
+            // 🚀 검색 타입 결정
+            const searchType = query.includes(',') ? 'multi' : 'single';
 
             // 🚀 UI 업데이트 (병렬 처리)
             await Promise.all([
                 this.uiManager.updateApiButton(),
-                this.videoDisplay.displaySearchResults(this.dataManager.currentVideos),
+                this.videoDisplay.displaySearchResults(this.dataManager.currentVideos, searchType),
                 this.uiManager.showSearchResults()
             ]);
 
-            // 🚀 최종 알림
+            // 🚀 검색 타입별 완료 메시지
+            const searchTypeKorean = searchType === 'multi' ? '다중' : '단일';
             this.showProgressiveNotification(
-                `검색 완료! ${this.dataManager.currentVideos.length}개 결과 (${duration}ms)`, 
+                `${searchTypeKorean} 검색 완료! ${this.dataManager.currentVideos.length}개 결과 (${duration}ms)`, 
                 'success'
             );
             
@@ -169,10 +326,9 @@ class SearchManager {
             this.updateSearchStatusFast();
 
         } catch (error) {
-            console.error('최적화된 검색 오류:', error);
+            console.error('하이브리드 검색 오류:', error);
             this.handleSearchError(error);
         } finally {
-            this.uiManager.hideLoadingOverlay();
             // 진행률 알림은 자동으로 사라지도록
             setTimeout(() => this.uiManager.hideNotification(), 1000);
         }
@@ -241,34 +397,66 @@ class SearchManager {
         // 개인 API 키 확인
         const personalApiKey = this.getPersonalApiKey();
         
-        // 개인키가 등록되어 있으면 상태 표시 숨김
+        // 개인키가 등록되어 있으면 상태 표시 숨김 (개인키는 무제한 사용)
         if (personalApiKey && personalApiKey.trim()) {
             this.hideSearchStatusUI();
             return;
         }
 
         try {
-            // 🚀 브라우저 저장소에서 최신 상태 조회
-            const currentStatus = browserUsageTracker.getStatus();
-            
-            // 🔥 캐시 무효화: 즉시 업데이트 시 기존 캐시 제거
-            this.statusCache.delete('browser_status_cache');
-            this.cacheAccessOrder.delete('browser_status_cache');
-            
-            // 🚀 새로운 캐시에 즉시 저장
-            this.setCacheItem('browser_status_cache', currentStatus, 5000);
-
-            // 🚀 UI 즉시 업데이트
-            this.updateSearchStatusUIFast(currentStatus);
-            
-            // 🔥 로깅으로 상태 추적
-            console.log(`🔄 브라우저 기반 즉시 상태 업데이트:`, currentStatus);
+            // 🚀 서버 + 브라우저 상태 동기화된 정보 조회
+            // 서버에서 최신 상태 가져오기 시도
+            this.fetchServerStatusAndUpdate().catch(() => {
+                // 서버 실패 시 브라우저 상태로 폴백
+                console.log('서버 상태 조회 실패, 브라우저 상태 사용');
+                const browserStatus = browserUsageTracker.getStatus();
+                this.updateSearchStatusUIFast(browserStatus);
+            });
             
         } catch (error) {
-            console.error('브라우저 기반 즉시 상태 업데이트 실패:', error);
+            console.error('상태 업데이트 실패:', error);
             
-            // 🔄 오류 시 기본 동작으로 폴백
-            this.updateSearchStatusFast();
+            // 🔄 오류 시 브라우저 상태로 폴백
+            try {
+                const fallbackStatus = browserUsageTracker.getStatus();
+                this.updateSearchStatusUIFast(fallbackStatus);
+            } catch (fallbackError) {
+                console.error('폴백 상태 업데이트도 실패:', fallbackError);
+            }
+        }
+    }
+
+    /**
+     * 🚀 서버 상태 조회 및 UI 업데이트
+     */
+    async fetchServerStatusAndUpdate() {
+        try {
+            const response = await fetch('/youtube/usage/status', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            
+            if (response.ok) {
+                const serverStatus = await response.json();
+                if (serverStatus.success) {
+                    console.log(`🔄 서버 상태 동기화 완료:`, serverStatus);
+                    
+                    // 🔥 캐시 무효화 및 업데이트
+                    this.statusCache.delete('browser_status_cache');
+                    this.cacheAccessOrder.delete('browser_status_cache');
+                    this.setCacheItem('browser_status_cache', serverStatus, 5000);
+                    
+                    // UI 업데이트
+                    this.updateSearchStatusUIFast(serverStatus);
+                    return;
+                }
+            }
+            
+            throw new Error('서버 상태 조회 실패');
+            
+        } catch (error) {
+            console.warn('서버 상태 조회 실패:', error);
+            throw error;
         }
     }
 
@@ -454,6 +642,7 @@ class SearchManager {
         const channelEndDateElement = document.getElementById('channel-end-date');      // ✅ 추가
         // const channelYearElement = document.getElementById('channel-year');  // ✅ 제거 (HTML에 없음)
         const koreanOnlyElement = document.getElementById('korean-only');
+        const legendScoreInputElement = document.getElementById('legend-score-input');  // 🎯 레전드점수 최소값
         // const channelTypeElement = document.getElementById('channel-type');  // ✅ 제거 (HTML에 없음)
         // const videoDimensionElement = document.getElementById('video-dimension');  // ✅ 제거 (HTML에 없음) 
     
@@ -471,6 +660,7 @@ class SearchManager {
         if (channelEndDateElement) filters.channelEndDate = channelEndDateElement.value;        // ✅ 추가
         // if (channelYearElement) filters.channelYear = channelYearElement.value;  // ✅ 제거
         if (koreanOnlyElement) filters.koreanOnly = koreanOnlyElement.checked;
+        if (legendScoreInputElement) filters.legendScoreMin = parseInt(legendScoreInputElement.value) || 100;  // 🎯 레전드점수 최소값 저장
         // if (channelTypeElement) filters.channelType = channelTypeElement.value;  // ✅ 제거
         // if (videoDimensionElement) filters.videoDimension = videoDimensionElement.value;  // ✅ 제거 
 
@@ -548,7 +738,8 @@ class SearchManager {
             channelStartDate: '',     // ✅ 추가
             channelEndDate: '',       // ✅ 추가
             // channelYear: '',          // ✅ 제거 (사용 안됨)
-            koreanOnly: true
+            koreanOnly: true,
+            legendScoreMin: 100       // 🎯 레전드점수 최소값 기본값
             // channelType: 'any',       // ✅ 제거 (사용 안됨)
             // videoDimension: 'any'     // ✅ 제거 (사용 안됨)
         };
@@ -888,6 +1079,90 @@ class SearchManager {
         
         return needsUpdate;
     }
+
+    /**
+     * 레전드 점수를 계산합니다.
+     * @param {object} video - 영상 데이터 객체
+     * @param {number} video.viewCount - 조회수
+     * @param {string} video.publishedAt - 업로드 날짜 (ISO 8601 형식)
+     * @param {number} video.subscriberCount - 채널 구독자 수
+     * @returns {object} { score: number, tier: string, monthsElapsed: number, subscriberWeight: number }
+     */
+    calculateLegendScore(video) {
+        try {
+            // 데이터 구조 확인
+            const snippet = video.snippet || {};
+            const statistics = video.statistics || {};
+            const channelStatistics = video.channelStatistics || {};
+            
+            // 1단계: 경과 개월 수 계산
+            const publishedAt = snippet.publishedAt || video.publishedAt;
+            if (!publishedAt) {
+                console.warn('업로드일 데이터가 없습니다:', video);
+                return 0;
+            }
+            
+            const uploadDate = new Date(publishedAt);
+            const currentDate = new Date();
+            
+            const yearDiff = currentDate.getFullYear() - uploadDate.getFullYear();
+            const monthDiff = currentDate.getMonth() - uploadDate.getMonth();
+            const monthsElapsed = Math.max(1, yearDiff * 12 + monthDiff); // 최소 1개월 보장
+            
+            // 2단계: 구독자 가중치 계산
+            const subscriberCount = parseInt(channelStatistics.subscriberCount || video.subscriberCount) || 0;
+            let subscriberWeight;
+            
+            if (subscriberCount < 10000) {
+                subscriberWeight = 1.0; // 작은 채널 우대
+            } else if (subscriberCount < 100000) {
+                subscriberWeight = 0.8;
+            } else if (subscriberCount < 1000000) {
+                subscriberWeight = 0.6;
+            } else {
+                subscriberWeight = 0.4; // 대형 채널 가중치 축소
+            }
+            
+            // 3단계: 최종 레전드 점수 계산
+            const viewCount = parseInt(statistics.viewCount || video.viewCount) || 0;
+            if (viewCount === 0) {
+                console.warn('조회수 데이터가 없습니다:', video);
+                return 0;
+            }
+            
+            const rawScore = (viewCount / monthsElapsed) * subscriberWeight;
+            const legendScore = Math.round(rawScore);
+            
+            // 4단계: 레전드 등급 분류
+            let tier;
+            if (legendScore >= 100000) {
+                tier = '슈퍼레전드';
+            } else if (legendScore >= 60000) {
+                tier = '레전드';
+            } else if (legendScore >= 30000) {
+                tier = '준레전드';
+            } else {
+                tier = '일반';
+            }
+            
+            return {
+                score: legendScore,
+                tier: tier,
+                monthsElapsed: monthsElapsed,
+                subscriberWeight: subscriberWeight
+            };
+            
+        } catch (error) {
+            console.error('레전드 점수 계산 오류:', error);
+            return {
+                score: 0,
+                tier: '일반',
+                monthsElapsed: 1,
+                subscriberWeight: 1.0
+            };
+        }
+    }
+
 
     /**
      * 🚀 모든 리소스 정리

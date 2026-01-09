@@ -331,15 +331,22 @@ class VideoDisplay {
 
     /**
      * 검색 결과 테이블에 비디오를 표시합니다.
+     * @param {Array} videos - 표시할 비디오 배열
+     * @param {string} searchType - 검색 타입 ('single' 또는 'multi')
      */
-    displaySearchResults(videos) {
+    displaySearchResults(videos, searchType = 'single') {
         if (!this.resultsTableBody) {
             console.warn('resultsTableBody 요소가 존재하지 않습니다.');
             return;
         }
 
         if (videos.length === 0) {
-            this.resultsTableBody.innerHTML = '<tr><td colspan="13" class="no-results-message">검색 결과가 없습니다.</td></tr>';
+            // 검색 타입에 따라 다른 메시지 표시
+            const noResultsMessage = searchType === 'multi' ? 
+                '레전드 검색 결과가 없습니다.' : 
+                '검색 결과가 없습니다.';
+                
+            this.resultsTableBody.innerHTML = `<tr><td colspan="13" class="no-results-message">${noResultsMessage}</td></tr>`;
             this.uiManager.updateResultsCount(0);
             return;
         }
@@ -374,22 +381,24 @@ class VideoDisplay {
         const videoTitle = this._escapeHtml(snippet.title || video.title || '제목 없음');
         const videoUploadDate = snippet.publishedAt ? Formatters.formatDateTime(snippet.publishedAt) : video.published || '날짜 미상';
         const viewCount = Formatters.formatNumber(statistics.viewCount || 0) || video.views || '0';
-        const videoAccelerationRate = (typeof video.rawVideoAccelerationRate === 'number' && !isNaN(video.rawVideoAccelerationRate))
-            ? video.rawVideoAccelerationRate.toFixed(2)
-            : 'N/A';
+        // 레전드 점수 (떡상률 대신)
+        const legendScore = typeof video.legendScore === 'number' ? 
+            Formatters.formatNumber(video.legendScore) : '0';
+        const legendTier = video.legendTier || '일반';
         const likeCount = Formatters.formatNumber(statistics.likeCount || 0) || '0';
         const commentCount = Formatters.formatNumber(statistics.commentCount || 0) || '0';
         const videoDuration = contentDetails.duration ? Formatters.formatDuration(contentDetails.duration) : video.duration || 'N/A';
         const channelTitle = this._escapeHtml(snippet.channelTitle || video.channel || '알 수 없는 채널');
-        const channelCreatedDate = channelSnippet.publishedAt ? Formatters.formatDateTime(channelSnippet.publishedAt) : 'N/A';
         const subscriberCount = Formatters.formatNumber(channelStatistics.subscriberCount || 0) || '0';
         const channelAccelerationRate = (typeof video.rawChannelAccelerationRate === 'number' && !isNaN(video.rawChannelAccelerationRate))
             ? video.rawChannelAccelerationRate.toFixed(2)
             : 'N/A';
+        
+        // 키워드 필드 추가
+        const keyword = video.keyword || '';
 
         // ✅ <br> 제거 - CSS 자동 줄바꿈 사용
         const uploadDateFormatted = videoUploadDate;
-        const createdDateFormatted = channelCreatedDate;
         
         return `
             <tr data-video-id="${videoId}" data-type="search-result">
@@ -398,14 +407,14 @@ class VideoDisplay {
             <td class="video-title-cell" title="${videoTitle}"><a href="#" onclick="event.preventDefault(); window.youtubeApp.videoDisplay._openYouTubeVideo('${videoId}')">${Formatters.truncateText(videoTitle, 50)}</a></td>
             <td>${uploadDateFormatted}</td>
             <td>${viewCount}</td>
-            <td>${videoAccelerationRate}</td>
+            <td title="${legendTier}">${legendScore}</td>
             <td>${likeCount}</td>
             <td>${commentCount}</td>
             <td>${videoDuration}</td>
             <td title="${channelTitle}"><a href="https://www.youtube.com/channel/${snippet.channelId}" target="_blank" rel="noopener noreferrer">${Formatters.truncateText(channelTitle, 30)}</a></td>
-            <td>${createdDateFormatted}</td>
             <td>${subscriberCount}</td>
             <td>${channelAccelerationRate}</td>
+            <td>${keyword}</td>
         </tr>
         `;
     }

@@ -44,6 +44,22 @@ class UIManager {
     loadSettings() {
         this.dataManager.loadSettings();
         this.updateApiButton();
+        
+        // 🎯 저장된 필터 설정을 UI에 반영
+        this.loadFiltersToUI();
+    }
+
+    /**
+     * 🎯 저장된 필터 설정을 UI 입력창에 반영합니다.
+     */
+    loadFiltersToUI() {
+        const filters = this.dataManager.searchFilters;
+        
+        // 레전드점수 최소값 설정 반영
+        const legendScoreInput = document.getElementById('legend-score-input');
+        if (legendScoreInput && filters.legendScoreMin !== undefined) {
+            legendScoreInput.value = filters.legendScoreMin;
+        }
     }
 
     /**
@@ -440,6 +456,9 @@ class UIManager {
             case 'videoAccelerationRate':
                 return parseFloat(video.rawVideoAccelerationRate || 0);
                 
+            case 'legendScore':
+                return parseFloat(video.legendScore || 0);
+                
             case 'likes':
                 return parseInt(statistics.likeCount || 0, 10);
                 
@@ -468,6 +487,9 @@ class UIManager {
                 
             case 'channelAccelerationRate':
                 return parseFloat(video.rawChannelAccelerationRate || 0);
+                
+            case 'keyword':
+                return video.keyword || '';
                 
             default:
                 console.warn(`알 수 없는 정렬 컬럼: ${column}`);
@@ -562,13 +584,15 @@ class UIManager {
             'date': '업로드일',
             'views': '조회수',
             'videoAccelerationRate': '영상떡상률',
+            'legendScore': '레전드점수',
             'likes': '좋아요',
             'comments': '댓글',
             'duration': '길이',
             'channel': '채널',
             'channelDate': '채널개설일',
             'subscribers': '구독자수',
-            'channelAccelerationRate': '채널성장률'
+            'channelAccelerationRate': '채널성장률',
+            'keyword': '키워드'
         };
         
         return columnNames[column] || column;
@@ -676,28 +700,41 @@ class UIManager {
         const selectedCount = this.dataManager.selectedVideos.size;
         console.log(`📊 선택된 동영상 수: ${selectedCount}개`);
 
-        // 선택된 동영상 데이터 수집
-        const selectedVideoData = this.collectSelectedVideoData();
+        // 🎯 data-export.js의 공통 JSON 데이터 생성 함수 사용
+        let selectedVideoData;
+        try {
+            if (this.youtubeApp && this.youtubeApp.dataExport) {
+                selectedVideoData = this.youtubeApp.dataExport.generateSelectedVideosJsonData();
+            } else {
+                console.warn('⚠️ dataExport 인스턴스를 찾을 수 없어 fallback 방식 사용');
+                selectedVideoData = this.collectSelectedVideoData();
+            }
+        } catch (error) {
+            console.error('❌ 공통 JSON 데이터 생성 실패, fallback 방식 사용:', error);
+            selectedVideoData = this.collectSelectedVideoData();
+        }
         
-        if (selectedVideoData.length === 0) {
+        if (!selectedVideoData || selectedVideoData.length === 0) {
             this.showNotification('선택된 동영상 데이터를 가져올 수 없습니다', 'error', 3000);
             return;
         }
 
         // 분석 시작 메시지 표시
-        this.showNotification(`${selectedCount}개의 동영상을 분석합니다`, 'info', 2000);
+        this.showNotification(`${selectedCount}개의 동영상을 분석합니다 (레전드 헌팅 데이터 포함)`, 'info', 2000);
 
-        // localStorage에 데이터 저장
+        // localStorage에 데이터 저장 (JSON 내보내기와 동일한 구조 사용)
         try {
             const aiAnalysisData = {
                 videos: selectedVideoData,
                 count: selectedCount,
                 timestamp: new Date().toISOString(),
-                source: 'youtube-search-tool'
+                source: 'youtube-search-tool-legend-hunting',
+                legendHuntingEnabled: true,  // 🎯 레전드 헌팅 활성화 플래그
+                dataVersion: '2.0'  // 🎯 레전드 헌팅 데이터 포함 버전
             };
             
             localStorage.setItem('youtubeSearchResults', JSON.stringify(aiAnalysisData));
-            console.log('✅ AI 분석 데이터 localStorage에 저장됨:', aiAnalysisData);
+            console.log('✅ AI 분석 데이터 localStorage에 저장됨 (레전드 헌팅 데이터 포함):', aiAnalysisData);
 
             // analyzer.html로 이동
             setTimeout(() => {
@@ -711,7 +748,8 @@ class UIManager {
     }
 
     /**
-     * 선택된 동영상들의 데이터를 수집합니다.
+     * 🔄 선택된 동영상들의 데이터를 수집합니다. (DEPRECATED: fallback용으로만 사용)
+     * 🎯 레전드 헌팅 이후: data-export.js의 generateSelectedVideosJsonData() 사용 권장
      * @returns {Array} 선택된 동영상 데이터 배열
      */
     collectSelectedVideoData() {
@@ -821,6 +859,10 @@ class UIManager {
         if (maxSubscribersInput) maxSubscribersInput.value = '';
         if (minSubscribersInput) minSubscribersInput.value = '';
         if (koreanOnlyCheckbox) koreanOnlyCheckbox.checked = true;
+        
+        // 🎯 레전드점수 최소값 필터도 초기화
+        const legendScoreInput = document.getElementById('legend-score-input');
+        if (legendScoreInput) legendScoreInput.value = 100;
         
         this.showNotification('필터가 초기화되었습니다.', 'info', 2000);
         console.log('✅ 필터 초기화 완료');

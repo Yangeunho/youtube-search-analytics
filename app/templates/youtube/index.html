@@ -30,7 +30,7 @@
             <a href="#" class="logo" id="home-button">🎥 YouTube 분석 도구</a>
 
             <div class="search-container">
-                <span class="search-icon">⌨️</span> <input type="text" class="search-input" id="search-input" placeholder="검색어를 입력하세요... (예: 요리, 운동, 리뷰)">
+                <span class="search-icon">⌨️</span> <input type="text" class="search-input" id="search-input" placeholder="검색어 입력 (쉼표로 구분시 다중검색)">
                 <button class="search-btn" id="search-button"><span>🔍</span></button>
             </div>
 
@@ -223,14 +223,14 @@
                             <th class="sortable" data-sort-by="title" title="제목">제목</th>
                             <th class="sortable" data-sort-by="date" title="업로드일">업로드일</th>
                             <th class="sortable" data-sort-by="views" title="조회수">조회수</th>
-                            <th class="sortable" data-sort-by="videoAccelerationRate" title="떡상률=확산률/업로드경과일">떡상률</th>
+                            <th class="sortable" data-sort-by="legendScore" title="레전드점수=(조회수/경과월수)×구독자가중치">레전드점수</th>
                             <th class="sortable" data-sort-by="likes" title="좋아요">좋아요</th>
                             <th class="sortable" data-sort-by="comments" title="댓글">댓글</th>
                             <th class="sortable" data-sort-by="duration" title="영상길이">길이</th>
                             <th class="sortable" data-sort-by="channel" title="채널">채널</th>
-                            <th class="sortable" data-sort-by="channelDate" title="채널개설일">개설일</th>
                             <th class="sortable" data-sort-by="subscribers" title="구독자수">구독자수</th>
                             <th class="sortable" data-sort-by="channelAccelerationRate" title="확산률=조회수/구독자수">확산률</th>
+                            <th class="sortable" data-sort-by="keyword" title="검색 키워드">키워드</th>
                             </tr>
                     </thead>
                     <tbody id="results-table-body">
@@ -346,6 +346,17 @@
                                         onfocus="this.select()"
                                         onclick="this.select()">
                             </div>
+                        </div>
+
+                        <div class="filter-group">
+                            <label class="filter-label">레전드점수 최소값 (다중검색용)</label>
+                            <input type="number" class="filter-input" id="legend-score-input" 
+                                    min="0" max="50000" value="100" step="100"
+                                    autocomplete="off"
+                                    style="width: 233.27px; height: 29.59px;"
+                                    onfocus="this.select()"
+                                    onclick="this.select()">
+                            <small class="filter-help" style="color: #666; font-size: 0.8em; margin-top: 4px; display: block;">단일검색에는 적용되지 않습니다</small>
                         </div>
                         
                     </div>

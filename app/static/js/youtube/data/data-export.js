@@ -108,14 +108,14 @@ class DataExport {
                     '제목': snippet.title || '',
                     '게시일': Formatters.formatDateTime(snippet.publishedAt),
                     '조회수': parseInt(statistics.viewCount || 0),
-                    '영상떡상률': videoAccelerationRate.toFixed(2),  // 🔧 계산된 값 사용
+                    '레전드점수': video.legendScore ? video.legendScore.toFixed(2) : videoAccelerationRate.toFixed(2),  // 🎯 레전드점수 사용 (fallback: 계산된 값)
                     '좋아요': parseInt(statistics.likeCount || 0),
                     '댓글수': parseInt(statistics.commentCount || 0),
                     '영상길이': Formatters.formatDuration(contentDetails.duration),
                     '채널명': snippet.channelTitle || '',
-                    '채널개설일': Formatters.formatDateTime(channelSnippet.publishedAt),
                     '구독자수': parseInt(channelStatistics.subscriberCount || 0),
                     '영상확산률': channelAccelerationRate.toFixed(2),  // 🔧 계산된 값 사용
+                    '키워드': video.keyword || '',  // 🎯 키워드 컬럼 추가
                     '동영상주소': `https://www.youtube.com/watch?v=${video.id || ''}`
                 };
             });
@@ -124,20 +124,20 @@ class DataExport {
             const wb = XLSX.utils.book_new();
             const ws = XLSX.utils.json_to_sheet(excelData);
 
-            // 컬럼 너비 설정
+            // 컬럼 너비 설정 (13개 컬럼)
             const colWidths = [
                 { wch: 60 }, // 썸네일주소
                 { wch: 50 }, // 제목
                 { wch: 20 }, // 게시일
                 { wch: 15 }, // 조회수
-                { wch: 15 }, // 영상떡상률
+                { wch: 15 }, // 레전드점수 (기존: 영상떡상률)
                 { wch: 12 }, // 좋아요
                 { wch: 12 }, // 댓글수
                 { wch: 12 }, // 영상길이
                 { wch: 20 }, // 채널명
-                { wch: 20 }, // 채널개설일
                 { wch: 15 }, // 구독자수
                 { wch: 15 }, // 영상확산률
+                { wch: 20 }, // 키워드 (신규 추가)
                 { wch: 60 }  // 동영상주소
             ];
             ws['!cols'] = colWidths;
@@ -157,32 +157,15 @@ class DataExport {
     }
 
     /**
-     * 검색 결과를 JSON 형태로 내보냅니다. (Excel과 같은 순서)
-     * @param {Array} videos - 내보낼 비디오 배열 (기본값: 현재 비디오).
-     * @param {string} filename - 파일명 (기본값: youtube_results.json).
+     * 🎯 공통 JSON 데이터 생성 함수 (AI 분석과 JSON 내보내기 공용)
+     * @param {Array} selectedVideos - 선택된 비디오 배열
+     * @returns {Array} 생성된 JSON 데이터 배열
      */
-    exportToJson(videos = null, filename = 'youtube_results.json') {
+    generateJsonData(selectedVideos) {
         try {
-            // 선택된 비디오 가져오기
-            const selectedVideos = [];
-            if (this.dataManager.selectedVideos && this.dataManager.selectedVideos.size > 0) {
-                this.dataManager.currentVideos.forEach(video => {
-                    if (this.dataManager.selectedVideos.has(video.id)) {
-                        selectedVideos.push(video);
-                    }
-                });
-            }
-            
-            // 선택 검증
-            if (selectedVideos.length === 0) {
-                this.uiManager.showNotification('동영상을 선택하세요.', 'warning');
-                return;
-            }
-            
-            const videosToExport = selectedVideos;
 
             // JSON 데이터 생성 - AI 분석용 확장 데이터 포함
-            const jsonData = videosToExport.map((video, index) => {
+            const jsonData = selectedVideos.map((video, index) => {
                 const snippet = video.snippet || {};
                 const statistics = video.statistics || {};
                 const contentDetails = video.contentDetails || {};
@@ -263,19 +246,19 @@ class DataExport {
                                           publishHour < 18 ? 'afternoon' : 'evening';
 
                 return {
-                    // 기본 정보 (Excel과 동일)
+                    // 기본 정보 (Excel과 동일 - 13개 컬럼)
                     썸네일주소: thumbnailUrl,
                     제목: snippet.title || '',
                     게시일: Formatters.formatDateTime(snippet.publishedAt),
                     조회수: viewCount,
-                    영상떡상률: videoAccelerationRate.toFixed(2),
+                    레전드점수: video.legendScore ? video.legendScore.toFixed(2) : videoAccelerationRate.toFixed(2),  // 🎯 레전드점수 사용 (fallback: 계산된 값)
                     좋아요: likeCount,
                     댓글수: commentCount,
                     영상길이: Formatters.formatDuration(contentDetails.duration),
                     채널명: snippet.channelTitle || '',
-                    채널개설일: Formatters.formatDateTime(channelSnippet.publishedAt),
                     구독자수: subscriberCount,
                     영상확산률: channelAccelerationRate.toFixed(2),
+                    키워드: video.keyword || '',  // 🎯 키워드 컬럼 추가
                     동영상주소: `https://www.youtube.com/watch?v=${video.id || ''}`,
                     
                     // 🤖 AI 분석용 확장 데이터
@@ -358,23 +341,79 @@ class DataExport {
                             publicStatsViewable: video.status?.publicStatsViewable !== false
                         },
                         
-                        // AI 분석 종합 점수
+                        // 🎯 레전드 헌팅 시스템 지표
+                        legendHuntingMetrics: {
+                            legendScore: video.legendScore || 0,  // 레전드 점수
+                            legendTier: video.legendTier || '일반',  // 레전드 티어 (슈퍼레전드/레전드/준레전드/일반)
+                            isLegendEligible: video.isLegendEligible || false,  // 레전드 자격 여부 (다중검색 필터링용)
+                            subscriberWeight: video.subscriberWeight || 1.0,  // 구독자 가중치
+                            monthsElapsed: video.monthsElapsed || 0,  // 업로드 후 경과 개월 수
+                            legendRank: video.legendRank || 0,  // 레전드 순위 (키워드 내)
+                            keywordContext: video.keyword || '',  // 키워드 컨텍스트
+                            multiSearchFiltered: video.multiSearchFiltered || false  // 다중검색 필터링 적용 여부
+                        },
+                        
+                        // AI 분석 종합 점수 (레전드 점수 통합)
                         comprehensiveScores: {
-                            overallPerformanceScore: ((parseFloat(viralityScore) * 0.3) + 
-                                                     (parseFloat(engagementRate) * 0.25) + 
-                                                     (parseFloat(subscriberGrowthPotential) * 0.25) + 
-                                                     (parseFloat(videoPerformanceIndex) * 0.2)).toFixed(4),
+                            overallPerformanceScore: ((parseFloat(viralityScore) * 0.25) + 
+                                                     (parseFloat(engagementRate) * 0.2) + 
+                                                     (parseFloat(subscriberGrowthPotential) * 0.2) + 
+                                                     (parseFloat(videoPerformanceIndex) * 0.15) +
+                                                     ((video.legendScore || 0) * 0.2)).toFixed(4),  // 🎯 레전드점수 20% 반영
                             contentQualityScore: (parseFloat(engagementRate) * 0.4 + 
                                                 parseFloat(likeRate) * 0.6).toFixed(4),
-                            growthPotentialScore: (parseFloat(subscriberGrowthPotential) * 0.6 + 
-                                                 parseFloat(videoAccelerationRate) * 0.4).toFixed(4),
+                            growthPotentialScore: (parseFloat(subscriberGrowthPotential) * 0.4 + 
+                                                 parseFloat(videoAccelerationRate) * 0.3 +
+                                                 ((video.legendScore || 0) * 0.3)).toFixed(4),  // 🎯 레전드점수 30% 반영
                             viralPotentialScore: parseFloat(viralityScore),
                             channelHealthScore: subscriberCount > 0 && channelVideoCount > 0 ? 
-                                              Math.min(((subscriberCount / channelVideoCount) * 0.01), 100).toFixed(4) : '0.0000'
+                                              Math.min(((subscriberCount / channelVideoCount) * 0.01), 100).toFixed(4) : '0.0000',
+                            legendPerformanceScore: (video.legendScore || 0)  // 🎯 순수 레전드 성과 점수
                         }
                     }
                 };
             });
+
+            return jsonData;
+
+        } catch (error) {
+            console.error('JSON 데이터 생성 오류:', error);
+            return [];
+        }
+    }
+
+    /**
+     * 검색 결과를 JSON 형태로 내보냅니다. (Excel과 같은 순서)
+     * @param {Array} videos - 내보낼 비디오 배열 (기본값: 현재 비디오).
+     * @param {string} filename - 파일명 (기본값: youtube_results.json).
+     */
+    exportToJson(videos = null, filename = 'youtube_results.json') {
+        try {
+            // 선택된 비디오 가져오기
+            const selectedVideos = [];
+            if (this.dataManager.selectedVideos && this.dataManager.selectedVideos.size > 0) {
+                this.dataManager.currentVideos.forEach(video => {
+                    if (this.dataManager.selectedVideos.has(video.id)) {
+                        selectedVideos.push(video);
+                    }
+                });
+            }
+            
+            // 선택 검증
+            if (selectedVideos.length === 0) {
+                this.uiManager.showNotification('동영상을 선택하세요.', 'warning');
+                return;
+            }
+            
+            const videosToExport = selectedVideos;
+
+            // 🎯 공통 JSON 데이터 생성 함수 사용
+            const jsonData = this.generateJsonData(videosToExport);
+            
+            if (jsonData.length === 0) {
+                this.uiManager.showNotification('JSON 데이터 생성에 실패했습니다.', 'error');
+                return;
+            }
 
             // 메타데이터 포함한 완전한 JSON
             const exportData = {
@@ -397,6 +436,36 @@ class DataExport {
         } catch (error) {
             console.error('JSON 내보내기 오류:', error);
             this.uiManager.showNotification('JSON 내보내기 중 오류가 발생했습니다.', 'error');
+        }
+    }
+
+    /**
+     * 🎯 선택된 비디오들의 JSON 데이터를 생성하여 반환합니다. (AI 분석용)
+     * @returns {Array} 선택된 비디오들의 JSON 데이터 배열
+     */
+    generateSelectedVideosJsonData() {
+        try {
+            // 선택된 비디오 가져오기
+            const selectedVideos = [];
+            if (this.dataManager.selectedVideos && this.dataManager.selectedVideos.size > 0) {
+                this.dataManager.currentVideos.forEach(video => {
+                    if (this.dataManager.selectedVideos.has(video.id)) {
+                        selectedVideos.push(video);
+                    }
+                });
+            }
+            
+            if (selectedVideos.length === 0) {
+                console.warn('선택된 비디오가 없습니다.');
+                return [];
+            }
+            
+            // 🎯 공통 JSON 데이터 생성 함수 사용
+            return this.generateJsonData(selectedVideos);
+            
+        } catch (error) {
+            console.error('선택된 비디오 JSON 데이터 생성 오류:', error);
+            return [];
         }
     }
 

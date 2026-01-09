@@ -44,7 +44,8 @@ class DataManager {
             minSubscribers: '',    // 최소 구독자 수
             maxResults: 50,        // 최대 결과 수 (1-50)
             channelYear: '',       // 채널 개설 연도
-            koreanOnly: true       // 한국어 콘텐츠 우선 여부
+            koreanOnly: true,      // 한국어 콘텐츠 우선 여부
+            legendScoreMin: 100    // 🎯 레전드점수 최소값 (다중검색용)
         };
 
         // 페이지네이션 관련
@@ -375,6 +376,134 @@ class DataManager {
      */
     setCurrentPage(page) {
         this.currentPage = page;
+    }
+
+    /**
+     * 비디오 데이터에 레전드 점수와 키워드를 추가합니다.
+     * @param {Array} videos - 영상 데이터 배열
+     * @param {string} keyword - 검색 키워드
+     * @param {string} searchType - 검색 타입 ('single' 또는 'multi')
+     * @param {object} searchManager - 레전드 점수 계산을 위한 SearchManager 인스턴스
+     * @returns {Array} 확장된 영상 데이터 배열
+     */
+    enrichVideosWithLegendData(videos, keyword, searchType = 'single', searchManager) {
+        if (!videos || !Array.isArray(videos)) {
+            return [];
+        }
+
+        return videos.map(video => {
+            // 레전드 점수 계산
+            const legendData = searchManager ? 
+                searchManager.calculateLegendScore(video) : 
+                { score: 0, tier: '일반', monthsElapsed: 1, subscriberWeight: 1.0 };
+
+            // 기존 데이터에 새 필드 추가
+            return {
+                ...video,
+                keyword: keyword || '',                    // 검색 키워드
+                legendScore: legendData.score,             // 레전드 점수 (숫자)
+                legendTier: legendData.tier,               // 레전드 등급 (문자열)
+                searchType: searchType,                    // 검색 타입 ('single'/'multi')
+                monthsElapsed: legendData.monthsElapsed,   // 경과 개월 수 (디버그용)
+                subscriberWeight: legendData.subscriberWeight // 구독자 가중치 (디버그용)
+            };
+        });
+    }
+
+    /**
+     * 다중 검색 결과를 통합하고 레전드 필터링을 적용합니다.
+     * @param {Array} multiSearchResults - 다중 검색 결과 배열
+     * @param {object} searchManager - 레전드 적격성 확인을 위한 SearchManager 인스턴스
+     * @returns {Array} 통합되고 필터링된 영상 데이터 배열
+     */
+    mergeMultiSearchResults(multiSearchResults, searchManager) {
+        if (!multiSearchResults || !Array.isArray(multiSearchResults)) {
+            return [];
+        }
+
+        const mergedResults = [];
+
+        multiSearchResults.forEach(result => {
+            if (!result.videos || !Array.isArray(result.videos)) {
+                return;
+            }
+
+            // 각 키워드별로 레전드 점수 필터링 적용
+            const filteredVideos = result.videos.filter(video => {
+                // 레전드 점수 최소값 조건 (필터 설정값 사용, 기본값 100)
+                const legendScoreMin = this.getLegendScoreMinFilter();
+                if (video.legendScore < legendScoreMin) {
+                    return false;
+                }
+
+                return true;
+            });
+
+            // 키워드별로 상위 5-10개만 선택
+            const topVideos = filteredVideos
+                .sort((a, b) => b.legendScore - a.legendScore) // 레전드 점수 내림차순
+                .slice(0, 10); // 상위 10개만
+
+            mergedResults.push(...topVideos);
+        });
+
+        // 최종 결과를 키워드별로 묶고, 각 키워드 내에서 레전드 점수 내림차순 정렬
+        return mergedResults.sort((a, b) => {
+            // 키워드가 다르면 키워드 순으로 정렬
+            if (a.keyword !== b.keyword) {
+                return (a.keyword || '').localeCompare(b.keyword || '');
+            }
+            // 같은 키워드 내에서는 레전드 점수 내림차순
+            return b.legendScore - a.legendScore;
+        });
+    }
+
+    /**
+     * 현재 비디오 데이터에서 레전드 통계를 계산합니다.
+     * @returns {object} 레전드 통계 정보
+     */
+    getLegendStatistics() {
+        if (!this.currentVideos || this.currentVideos.length === 0) {
+            return {
+                total: 0,
+                슈퍼레전드: 0,
+                레전드: 0,
+                준레전드: 0,
+                일반: 0,
+                averageScore: 0
+            };
+        }
+
+        const stats = {
+            total: this.currentVideos.length,
+            슈퍼레전드: 0,
+            레전드: 0,
+            준레전드: 0,
+            일반: 0,
+            totalScore: 0
+        };
+
+        this.currentVideos.forEach(video => {
+            const tier = video.legendTier || '일반';
+            const score = video.legendScore || 0;
+
+            stats[tier] = (stats[tier] || 0) + 1;
+            stats.totalScore += score;
+        });
+
+        stats.averageScore = stats.total > 0 ? 
+            Math.round(stats.totalScore / stats.total) : 0;
+
+        return stats;
+    }
+
+    /**
+     * 🎯 다중검색용 레전드점수 최소값 필터 설정을 가져옵니다.
+     * @returns {number} 레전드점수 최소값 (저장된 값 또는 기본값 100)
+     */
+    getLegendScoreMinFilter() {
+        // 저장된 설정값 우선 사용
+        return this.searchFilters.legendScoreMin || 100;
     }
 }
 
