@@ -108,65 +108,91 @@ class VideoDisplay {
      */
     async _fetchYouTubeTrendingDirect(apiKey) {
         console.log('🌐 직접 YouTube Data API v3 호출 시작');
-        
+
         const baseUrl = 'https://www.googleapis.com/youtube/v3/videos';
         const regionSelect = document.getElementById('trending-country');
         const categorySelect = document.getElementById('trending-category');
+        const countSelect = document.getElementById('trending-count');
         const regionCode = regionSelect ? regionSelect.value : 'KR';
         const categoryId = categorySelect ? categorySelect.value : '';
+        const targetCount = countSelect ? parseInt(countSelect.value) : 50;
 
-        const params = new URLSearchParams({
-            part: 'snippet,statistics,contentDetails',
-            chart: 'mostPopular',
-            regionCode: regionCode,
-            maxResults: '50',
-            key: apiKey
-        });
-        if (categoryId) {
-            params.set('videoCategoryId', categoryId);
-        }
-        
-        const url = `${baseUrl}?${params.toString()}`;
-        console.log('📡 API 요청 URL:', url.replace(apiKey, 'API_KEY_HIDDEN'));
-        
+        let allItems = [];
+        let nextPageToken = null;
+
         try {
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                if (response.status === 403) {
-                    const errorData = await response.json().catch(() => ({}));
-                    if (errorData.error?.errors?.[0]?.reason === 'quotaExceeded') {
-                        throw new Error('YouTube API 할당량이 초과되었습니다. 내일 다시 시도해주세요.');
-                    } else if (errorData.error?.errors?.[0]?.reason === 'keyInvalid') {
-                        throw new Error('YouTube API 키가 유효하지 않습니다. API 키를 확인해주세요.');
+            while (allItems.length < targetCount) {
+                const params = new URLSearchParams({
+                    part: 'snippet,statistics,contentDetails',
+                    chart: 'mostPopular',
+                    regionCode: regionCode,
+                    maxResults: '50',
+                    key: apiKey
+                });
+                if (categoryId) {
+                    params.set('videoCategoryId', categoryId);
+                }
+                if (nextPageToken) {
+                    params.set('pageToken', nextPageToken);
+                }
+
+                const url = `${baseUrl}?${params.toString()}`;
+                console.log(`📡 API 요청 (${allItems.length}/${targetCount}):`, url.replace(apiKey, 'API_KEY_HIDDEN'));
+
+                const response = await fetch(url);
+
+                if (!response.ok) {
+                    if (response.status === 403) {
+                        const errorData = await response.json().catch(() => ({}));
+                        if (errorData.error?.errors?.[0]?.reason === 'quotaExceeded') {
+                            throw new Error('YouTube API 할당량이 초과되었습니다. 내일 다시 시도해주세요.');
+                        } else if (errorData.error?.errors?.[0]?.reason === 'keyInvalid') {
+                            throw new Error('YouTube API 키가 유효하지 않습니다. API 키를 확인해주세요.');
+                        } else {
+                            throw new Error('YouTube API 액세스가 거부되었습니다. API 키 권한을 확인해주세요.');
+                        }
+                    } else if (response.status === 400) {
+                        throw new Error('YouTube API 요청이 잘못되었습니다. API 키를 확인해주세요.');
                     } else {
-                        throw new Error('YouTube API 액세스가 거부되었습니다. API 키 권한을 확인해주세요.');
+                        throw new Error(`YouTube API 오류: ${response.status} ${response.statusText}`);
                     }
-                } else if (response.status === 400) {
-                    throw new Error('YouTube API 요청이 잘못되었습니다. API 키를 확인해주세요.');
-                } else {
-                    throw new Error(`YouTube API 오류: ${response.status} ${response.statusText}`);
+                }
+
+                const data = await response.json();
+                console.log(`✅ YouTube API 응답: ${data.items?.length || 0}개 (누적: ${allItems.length + (data.items?.length || 0)}/${targetCount})`);
+
+                if (!data.items || data.items.length === 0) {
+                    break;
+                }
+
+                allItems.push(...data.items);
+
+                if (allItems.length < targetCount) {
+                    this.uiManager.showNotification(`인기 동영상 ${allItems.length}/${targetCount}개 로딩 중...`, 'info', 2000);
+                }
+
+                nextPageToken = data.nextPageToken;
+                if (!nextPageToken) {
+                    console.log('📄 더 이상 페이지가 없습니다.');
+                    break;
                 }
             }
-            
-            const data = await response.json();
-            console.log('✅ YouTube API 응답 수신:', data.items?.length || 0, '개 동영상');
-            
-            if (!data.items || data.items.length === 0) {
+
+            if (allItems.length === 0) {
                 throw new Error('YouTube API에서 동영상 데이터를 찾을 수 없습니다.');
             }
-            
-            const limitedItems = data.items.slice(0, 50);
-            console.log(`🔢 API 결과: ${data.items.length}개 → ${limitedItems.length}개`);
 
-            return limitedItems.map(item => ({
+            const finalItems = allItems.slice(0, targetCount);
+            console.log(`🔢 최종 결과: ${allItems.length}개 → ${finalItems.length}개`);
+
+            return finalItems.map(item => ({
                 id: item.id,
                 snippet: item.snippet,
                 statistics: item.statistics,
                 contentDetails: item.contentDetails,
                 isOffline: false
             }));
-            
+
         } catch (error) {
             console.error('❌ YouTube API 직접 호출 실패:', error);
             throw error;

@@ -138,14 +138,18 @@ class YouTubeApp {
             }
         });
 
-        // 🌍 국가/카테고리 변경 시 인기 동영상 자동 재로딩
+        // 🌍 국가/카테고리/개수 변경 시 인기 동영상 자동 재로딩
         const trendingCountry = document.getElementById('trending-country');
         const trendingCategory = document.getElementById('trending-category');
+        const trendingCount = document.getElementById('trending-count');
         if (trendingCountry) {
             trendingCountry.addEventListener('change', () => this.videoDisplay.loadYouTubeHome());
         }
         if (trendingCategory) {
             trendingCategory.addEventListener('change', () => this.videoDisplay.loadYouTubeHome());
+        }
+        if (trendingCount) {
+            trendingCount.addEventListener('change', () => this.videoDisplay.loadYouTubeHome());
         }
     }
 }
