@@ -110,13 +110,21 @@ class VideoDisplay {
         console.log('🌐 직접 YouTube Data API v3 호출 시작');
         
         const baseUrl = 'https://www.googleapis.com/youtube/v3/videos';
+        const regionSelect = document.getElementById('trending-country');
+        const categorySelect = document.getElementById('trending-category');
+        const regionCode = regionSelect ? regionSelect.value : 'KR';
+        const categoryId = categorySelect ? categorySelect.value : '';
+
         const params = new URLSearchParams({
             part: 'snippet,statistics,contentDetails',
             chart: 'mostPopular',
-            regionCode: 'KR',
-            maxResults: '25', /* API홈화면수량설정 */
+            regionCode: regionCode,
+            maxResults: '50',
             key: apiKey
         });
+        if (categoryId) {
+            params.set('videoCategoryId', categoryId);
+        }
         
         const url = `${baseUrl}?${params.toString()}`;
         console.log('📡 API 요청 URL:', url.replace(apiKey, 'API_KEY_HIDDEN'));
@@ -148,9 +156,8 @@ class VideoDisplay {
                 throw new Error('YouTube API에서 동영상 데이터를 찾을 수 없습니다.');
             }
             
-            // 🎯 25개로 제한 (혹시 API가 더 많이 반환할 경우 대비)
-            const limitedItems = data.items.slice(0, 25);
-            console.log(`🔢 API 결과 제한: ${data.items.length}개 → ${limitedItems.length}개`);
+            const limitedItems = data.items.slice(0, 50);
+            console.log(`🔢 API 결과: ${data.items.length}개 → ${limitedItems.length}개`);
 
             return limitedItems.map(item => ({
                 id: item.id,

@@ -90,11 +90,41 @@
         <div id="youtube-home" class="content-section active">
             <div class="home-header">
                 <h2>🔥 오늘의 인기 동영상</h2>
-                <!--
-                <button class="btn-primary" id="refresh-home-button">
-                    🔄 새로고침
-                </button>
-                -->
+                <div class="trending-filters">
+                    <select id="trending-country" class="trending-select">
+                        <option value="KR" selected>🇰🇷 한국</option>
+                        <option value="US">🇺🇸 미국</option>
+                        <option value="JP">🇯🇵 일본</option>
+                        <option value="GB">🇬🇧 영국</option>
+                        <option value="DE">🇩🇪 독일</option>
+                        <option value="FR">🇫🇷 프랑스</option>
+                        <option value="BR">🇧🇷 브라질</option>
+                        <option value="IN">🇮🇳 인도</option>
+                        <option value="TW">🇹🇼 대만</option>
+                        <option value="TH">🇹🇭 태국</option>
+                        <option value="VN">🇻🇳 베트남</option>
+                        <option value="CA">🇨🇦 캐나다</option>
+                        <option value="AU">🇦🇺 호주</option>
+                        <option value="RU">🇷🇺 러시아</option>
+                        <option value="MX">🇲🇽 멕시코</option>
+                    </select>
+                    <select id="trending-category" class="trending-select">
+                        <option value="" selected>📁 전체</option>
+                        <option value="1">🎬 영화/애니</option>
+                        <option value="2">🚗 자동차</option>
+                        <option value="10">🎵 음악</option>
+                        <option value="15">🐾 동물</option>
+                        <option value="17">⚽ 스포츠</option>
+                        <option value="20">🎮 게임</option>
+                        <option value="22">👤 인물/블로그</option>
+                        <option value="23">🎭 코미디</option>
+                        <option value="24">🎪 엔터테인먼트</option>
+                        <option value="25">📰 뉴스/정치</option>
+                        <option value="26">🎨 노하우/스타일</option>
+                        <option value="27">📚 교육</option>
+                        <option value="28">🔬 과학기술</option>
+                    </select>
+                </div>
             </div>
 
             <div class="video-grid" id="home-video-grid">

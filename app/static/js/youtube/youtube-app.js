@@ -137,6 +137,16 @@ class YouTubeApp {
                 }
             }
         });
+
+        // 🌍 국가/카테고리 변경 시 인기 동영상 자동 재로딩
+        const trendingCountry = document.getElementById('trending-country');
+        const trendingCategory = document.getElementById('trending-category');
+        if (trendingCountry) {
+            trendingCountry.addEventListener('change', () => this.videoDisplay.loadYouTubeHome());
+        }
+        if (trendingCategory) {
+            trendingCategory.addEventListener('change', () => this.videoDisplay.loadYouTubeHome());
+        }
     }
 }
 
